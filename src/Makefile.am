@@ -2,6 +2,7 @@ MANIFEST_SRC = manifest.json.in
 
 MCPACK_INSTALLATION_DIRECTORY = $(MCPACK_INSTALLATION_DIRECTORY_resource)
 MCPACK_FILES = \
+	items/wand_of_probing.json \
 	manifest.json \
 	pack_icon.png \
 	scripts/server/index.js
