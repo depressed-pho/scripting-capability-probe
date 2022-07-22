@@ -2,8 +2,10 @@
   "name": "bedrock-capability-probe",
   "version": "1.0.0",
   "description": "A Minecraft Bedrock addon that inspects the capability of the JavaScript engine that is accessible through the GameTest Framework.",
-  "main": "index.js",
+  "type": "commonjs",
   "scripts": {
+    "build": "gulp",
+    "clean": "gulp clean",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,6 +25,11 @@
   "homepage": "https://github.com/depressed-pho/bedrock-capability-probe#readme",
   "devDependencies": {
     "@types/mojang-minecraft": "^0.1.6",
+    "delete": "^1.1.0",
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.3.0",
+    "merge": "^2.1.1",
+    "semver": "^7.3.7",
     "typescript": "^4.7.4"
   },
   "dependencies": {}
