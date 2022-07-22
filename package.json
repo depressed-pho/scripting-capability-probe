@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/mojang-minecraft": "^0.1.6",
     "delete": "^1.1.0",
+    "gm": "^1.23.1",
     "gulp": "^4.0.2",
     "gulp-cli": "^2.3.0",
     "merge": "^2.1.1",

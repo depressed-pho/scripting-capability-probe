@@ -1,7 +1,7 @@
 const merge = require("merge");
 const semver = require("semver");
-const process = require("process");
-const path = require("path");
+const process = require("node:process");
+const path = require("node:path");
 
 function requireUncached(module) {
     delete require.cache[require.resolve(module)];
@@ -184,14 +184,16 @@ class Metadata {
 }
 
 class Pack {
-    constructor(packSrc, subdir = null) {
+    constructor(packSrc, srcDir, subdir = null) {
         this.subdir              = subdir; // string|null
 
         this.name                = packSrc.name;
         this.uuid                = packSrc.uuid;
         this.description         = packSrc.description;
         this.version             = parseVer(packSrc.version);
-        this.icon                = packSrc.icon;
+        this.icon                = packSrc.icon != null
+                                   ? path.resolve(srcDir, packSrc.icon)
+                                   : null;
         this.minEngineVersion    = parseVer(packSrc.min_engine_version); // SemVer|null
 
         // These are specific to world templates.
@@ -291,8 +293,9 @@ class Project {
     packs; // Pack[]
 
     constructor(pkgJsonPath, manifestSrcPath) {
-        const meta = requireUncached(path.resolve(process.cwd(), pkgJsonPath));
-        const src  = requireUncached(path.resolve(process.cwd(), manifestSrcPath));
+        const meta   = requireUncached(path.resolve(process.cwd(), pkgJsonPath));
+        const src    = requireUncached(path.resolve(process.cwd(), manifestSrcPath));
+        const srcDir = path.dirname(manifestSrcPath);
 
         const defaults = {
             name:        meta.name,
@@ -311,7 +314,7 @@ class Project {
             // THINKME: Should we let users choose the name of this?
             const subdir  = array.length > 1 ? `pack-${idx}` : null;
 
-            return new Pack(packSrc, subdir);
+            return new Pack(packSrc, srcDir, subdir);
         });
     }
 };

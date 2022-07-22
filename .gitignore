@@ -18,6 +18,7 @@ install-sh
 missing
 
 # Built files
+dist
 _build
 *.mcpack
 manifest.json
