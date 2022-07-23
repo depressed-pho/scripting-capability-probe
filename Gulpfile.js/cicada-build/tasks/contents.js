@@ -1,9 +1,16 @@
+const fs = require("node:fs");
 const path = require("node:path");
+const process = require("node:process");
 const jsonlint = require("jsonlint");
+const fancyLog = require("fancy-log");
+const gulpIf = require("gulp-if");
+const ts = require("gulp-typescript");
 const mapStream = require("map-stream");
 const streamReadAll = require("stream-read-all");
+const merge = require("merge");
 const { parallel, src, dest } = require("gulp");
 const { Project } = require("../project.js");
+const { requireUncached } = require("../utils.js");
 
 function validateJSONBuffer(vinyl, buf) /* null | Error */ {
     /* THINKME: We should validate it against actual JSON schemata, not
@@ -49,6 +56,37 @@ const validateJSON = mapStream((vinyl, cb) => {
     }
 });
 
+function transpileTypeScript(tsConfigPath) {
+    const tsConfigDefault = {
+        compilerOptions: {
+            noImplicitOverride: true,
+            noImplicitReturns: true,
+            noPropertyAccessFromIndexSignature: true,
+            noUncheckedIndexedAccess: true,
+            strict: true,
+            module: "ES2020",
+            target: "ES2022",
+            explainFiles: true
+        }
+    };
+    const tsConfig = merge.recursive(
+        true,
+        tsConfigDefault,
+        fs.existsSync(tsConfigPath) ? requireUncached(tsConfigPath) : {});
+
+    return gulpIf(
+        vinyl => {
+            const isTypeScript = path.extname(vinyl.path) == ".ts";
+            if (isTypeScript) {
+                const relPath = path.relative(process.cwd(), vinyl.path);
+                fancyLog.info("Transpiling `" + relPath + "'...");
+            }
+            return isTypeScript;
+        },
+        ts(tsConfig.compilerOptions)
+    );
+}
+
 exports.contents = function contents(cb) {
     const proj  = new Project("package.json", "src/manifest.js");
     const tasks = [];
@@ -63,6 +101,12 @@ exports.contents = function contents(cb) {
                 case "script":
                     /* Special case: the script module often needs a
                      * transpilation. */
+                    tasks.push(
+                        function transpile() {
+                            return src(srcGlob, {cwd: "src"})
+                                .pipe(transpileTypeScript("src/tsconfig.json"))
+                                .pipe(dest(destPath));
+                        });
                     break;
 
                 default:

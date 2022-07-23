@@ -2,11 +2,7 @@ const merge = require("merge");
 const semver = require("semver");
 const process = require("node:process");
 const path = require("node:path");
-
-function requireUncached(module) {
-    delete require.cache[require.resolve(module)];
-    return require(module);
-}
+const { requireUncached } = require("./utils.js");
 
 function parseVer(verStr /* string|null */) {
     if (verStr != null) {
