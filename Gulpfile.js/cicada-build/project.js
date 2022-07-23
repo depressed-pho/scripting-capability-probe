@@ -32,12 +32,29 @@ function triplet(ver /* SemVer */) {
     }
 }
 
+function rootOf(glob) {
+    return glob.split(path.sep)[0];
+}
+
+function parseIncl(incl /* string | string[] | {[string]: string} */) {
+    if (typeof incl === "string") {
+        return parseIncl({[incl]: rootOf(incl)});
+    }
+    else if (incl instanceof Array) {
+        return parseIncl(Object.fromEntries(incl.map(glob => [glob, rootOf(glob)])));
+    }
+    else {
+        return new Map(Object.entries(incl));
+    }
+}
+
 class Module {
     constructor(modSrc) {
         this.description = modSrc.description;
         this.type        = modSrc.type;
         this.uuid        = modSrc.uuid;
         this.version     = parseVer(modSrc.version);
+        this.include     = parseIncl(modSrc.include); // Map<string, string>
     }
 
     get manifest() {

@@ -33,12 +33,17 @@ module.exports = {
                     type: "script",
                     language: "javascript",
                     uuid: "1701df17-ca78-4cdf-b13f-73499791ace9",
-                    entry: "scripts/server/index.js"
+                    entry: "scripts/server/index.js",
+                    // Specify which scripts belong to this module. It must
+                    // obviously contain the entry point.
+                    include: ["scripts/**"]
                 },
                 {
                     description: "capprobe server data files",
                     type: "data",
-                    uuid: "e80993fe-6d43-425d-a4c6-382bf5e65056"
+                    uuid: "e80993fe-6d43-425d-a4c6-382bf5e65056",
+                    // Specify which files belong to this module.
+                    include: ["items/**"]
                 }
             ],
 
