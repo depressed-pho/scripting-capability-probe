@@ -4,7 +4,7 @@ const { mkdir } = require("node:fs/promises");
 const { Project } = require("../project.js");
 const { promisify } = require("node:util");
 
-exports.icon = async function icon() {
+exports.icons = async function icons() {
     const proj = new Project("package.json", "src/manifest.js");
 
     /* FIXME: Use node-png to see if the source icon is already a PNG image

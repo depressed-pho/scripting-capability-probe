@@ -162,12 +162,17 @@ class Capabilities {
 }
 
 class Metadata {
+    authors; // string[]
+    license; // string
+    generatedWith; // Map<string, SemVer[]>
+    url; // string
+
     constructor(metaSrc = {}) {
-        this.authors       = metaSrc.authors; // string[]
-        this.license       = metaSrc.license; // string
-        this.generatedWith = new Map(); // Map<string, SemVer[]>
+        this.authors       = metaSrc.authors;
+        this.license       = metaSrc.license;
+        this.generatedWith = new Map();
         // FIXME: Put "cicada-build" once it's separated as a standalone library.
-        this.url           = metaSrc.url; // string
+        this.url           = metaSrc.url;
     }
 
     get manifest() {
@@ -303,12 +308,17 @@ function mkAuthors(meta) {
 }
 
 class Project {
+    name; // string
+    version; // SemVer
     packs; // Pack[]
 
     constructor(pkgJsonPath, manifestSrcPath) {
         const meta   = requireUncached(path.resolve(process.cwd(), pkgJsonPath));
         const src    = requireUncached(path.resolve(process.cwd(), manifestSrcPath));
         const srcDir = path.dirname(manifestSrcPath);
+
+        this.name    = meta.name;
+        this.version = parseVer(meta.version);
 
         const defaults = {
             name:        meta.name,
@@ -329,6 +339,17 @@ class Project {
 
             return new Pack(packSrc, srcDir, subdir);
         });
+    }
+
+    get archiveName() {
+        const basename = `${this.name}-${this.version.toString()}`;
+        if (this.packs.length > 1) {
+            return basename + ".mcaddon";
+        }
+        else {
+            // FIXME: World templates should have a different suffix.
+            return basename + ".mcpack";
+        }
     }
 };
 

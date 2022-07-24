@@ -1,32 +1,32 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const process = require("node:process");
+const through2 = require("through2");
 const jsonlint = require("jsonlint");
 const fancyLog = require("fancy-log");
 const gulpIf = require("gulp-if");
 const ts = require("gulp-typescript");
-const mapStream = require("map-stream");
 const streamReadAll = require("stream-read-all");
 const merge = require("merge");
 const { parallel, src, dest } = require("gulp");
 const { Project } = require("../project.js");
 const { requireUncached } = require("../utils.js");
 
-function validateJSONBuffer(vinyl, buf) /* null | Error */ {
+function validateJSONBuffer(vinyl, enc, buf) /* null | Error */ {
     /* THINKME: We should validate it against actual JSON schemata, not
      * only its well-formedness. */
     try {
-        jsonlint.parse(buf.toString());
+        jsonlint.parse(buf.toString(enc));
     }
     catch (e) {
         return Error(`${vinyl.path}: ${e.message}`);
     }
 }
 
-const validateJSON = mapStream((vinyl, cb) => {
+const validateJSON = through2.obj((vinyl, enc, cb) => {
     if (path.extname(vinyl.path) == ".json") {
-        if (vinyl.contents instanceof Buffer) {
-            const e = validateJSONBuffer(vinyl, vinyl.contents);
+        if (vinyl.isBuffer()) {
+            const e = validateJSONBuffer(vinyl, enc, vinyl.contents);
             if (e) {
                 cb(e);
             }
@@ -34,7 +34,7 @@ const validateJSON = mapStream((vinyl, cb) => {
                 cb(null, vinyl);
             }
         }
-        else if (vinyl.contents instanceof Readable) {
+        else if (vinyl.isStream()) {
             streamReadAll(vinyl.contents.clone())
                 .then(buf => {
                     const e = validateJSONBuffer(vinyl, buf);
@@ -103,6 +103,7 @@ exports.contents = function contents(cb) {
                      * transpilation. */
                     tasks.push(
                         function transpile() {
+                            // THINKME: Support PureScript as well!!!
                             return src(srcGlob, {cwd: "src"})
                                 .pipe(transpileTypeScript("src/tsconfig.json"))
                                 .pipe(dest(destPath));
@@ -119,6 +120,13 @@ exports.contents = function contents(cb) {
                 }
             }
         }
+
+        tasks.push(
+            function copyLicense() {
+                return src("LICENSE", {allowEmpty: true})
+                    .pipe(src("COPYING", {allowEmpty: true}))
+                    .pipe(dest(stageDir));
+            });
     }
 
     if (tasks.length > 0) {

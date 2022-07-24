@@ -1,14 +1,15 @@
 const { series, parallel } = require("gulp");
-const { clean, manifest, icon, contents } = require("./cicada-build/tasks.js");
+const { clean, manifests, icons, contents, archive } = require("./cicada-build/tasks.js");
 
 exports.build =
     series(
         clean,
         parallel(
-            manifest,
-            icon,
+            manifests,
+            icons,
             contents
-        )
+        ),
+        archive
     );
 
 exports.default = series(exports.build);
