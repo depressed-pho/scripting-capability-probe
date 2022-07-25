@@ -1,5 +1,5 @@
 const del = require("delete");
 
 exports.clean = async function clean () {
-    await del(["dist"]);
+    await del.promise(["dist"]);
 };

@@ -13,13 +13,13 @@ exports.icons = async function icons() {
 
     for (const pack of proj.packs) {
         if (pack.icon != null) {
-            const stageDir = pack.stageDir("dist/stage");
-            await mkdir(stageDir, {recursive: true});
+            const stagePath = pack.stagePath("dist/stage");
+            await mkdir(stagePath, {recursive: true});
 
             /* FIXME: Forcing the size to 256x256 is a bad idea if the icon
              * is already smaller than that, unless it's a vector image. */
             const iconSrc = gm(pack.icon).resize(256, 256);
-            const iconDst = path.resolve(stageDir, "pack_icon.png");
+            const iconDst = path.resolve(stagePath, "pack_icon.png");
             await promisify(iconSrc.write).bind(iconSrc)(iconDst);
         }
     }

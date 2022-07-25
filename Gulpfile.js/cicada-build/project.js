@@ -70,6 +70,7 @@ class Module {
         case "client_data":    return new ClientDataModule(modSrc);
         case "interface":      return new InterfaceModule(modSrc);
         case "world_template": return new WorldTemplateModule(modSrc);
+        case "skin_pack":      return new SkinPackModule(modSrc);
         case "javascript":     throw Error(`"javascript" is a deprecated module type. Use "script" instead.`);
         default:               throw Error(`Unknown module type: ${modSrc.type}`);
         }
@@ -94,6 +95,7 @@ class ServerDataModule extends Module {}
 class ClientDataModule extends Module {}
 class InterfaceModule extends Module {}
 class WorldTemplateModule extends Module {}
+class SkinPackModule extends Module {}
 
 class Dependency {
     #init(depSrc) {
@@ -202,9 +204,14 @@ class Metadata {
 }
 
 class Pack {
-    constructor(packSrc, srcDir, subdir = null) {
-        this.subdir              = subdir; // string|null
+    static Types = Object.freeze({
+        BehaviorPack:  Symbol("BehaviorPack"),
+        ResourcePack:  Symbol("ResourcePack"),
+        SkinPack:      Symbol("SkinPack"),
+        WorldTemplate: Symbol("WorldTemplate")
+    });
 
+    constructor(packSrc, srcDir) {
         this.name                = packSrc.name;
         this.uuid                = packSrc.uuid;
         this.description         = packSrc.description;
@@ -231,14 +238,69 @@ class Pack {
 
         this.capabilities = new Capabilities(packSrc.capabilities);
         this.metadata     = new Metadata(packSrc.metadata);
+
+        for (const mod of this.modules) {
+            if (mod instanceof ResourcesModule  ||
+                mod instanceof ClientDataModule ||
+                mod instanceof InterfaceModule) {
+                this.type = Pack.Types.ResourcePack;
+                break;
+            }
+            else if (mod instanceof ScriptModule     ||
+                     mod instanceof ServerDataModule) {
+                this.type = Pack.Types.BehaviorPack;
+                break;
+            }
+            else if (mod instanceof SkinPackModule) {
+                this.type = Pack.Types.SkinPack;
+            }
+            else if (mod instanceof WorldTemplate) {
+                this.type = Pack.Types.WorldTemplate;
+                break;
+            }
+            else {
+                throw Error(`Unknown module type: ${mod.type}`);
+            }
+        }
+
+        this.archiveSubDir = null;
+        this.installDir    = null;
     }
 
-    stageDir(root) {
-        if (this.subdir != null) {
-            return path.resolve(root, this.subdir);
+    stagePath(root) {
+        if (this.archiveSubDir != null) {
+            return path.resolve(root, this.archiveSubDir);
         }
         else {
             return root;
+        }
+    }
+
+    installRootPath(comMojangDir) {
+        switch (this.type) {
+        case Pack.Types.BehaviorPack:
+            return path.resolve(comMojangDir, "development_behavior_packs");
+
+        case Pack.Types.ResourcePack:
+            return path.resolve(comMojangDir, "development_resource_packs");
+
+        case Pack.Types.SkinPack:
+            return path.resolve(comMojangDir, "development_skin_packs");
+
+        case Pack.Types.WorldTemplate:
+            return path.resolve(comMojangDir, "world_templates");
+
+        default:
+            throw Error(`Unknown pack type: ${this.type}`);
+        }
+    }
+
+    installPath(comMojangDir) {
+        if (this.installDir != null) {
+            return path.resolve(this.installRootPath(comMojangDir), this.installDir);
+        }
+        else {
+            throw Error("installDir is not set");
         }
     }
 
@@ -334,21 +396,60 @@ class Project {
 
         this.packs = src.packs.map((packSrc0, idx, array) => {
             const packSrc = merge.recursive(true, common, packSrc0);
-            // THINKME: Should we let users choose the name of this?
-            const subdir  = array.length > 1 ? `pack-${idx}` : null;
-
-            return new Pack(packSrc, srcDir, subdir);
+            return new Pack(packSrc, srcDir);
         });
+        if (this.packs.length == 0) {
+            throw Error("A project must have at least one pack.");
+        }
+
+        const num_of = {}; // {[Pack.Types]: number}
+        for (const pack of this.packs) {
+            num_of[pack.type] = (num_of[pack.type] || 0) + 1;
+        }
+
+        const idx_of = {}; // {[Pack.Types]: number}
+        for (const pack of this.packs) {
+            // THINKME: Should we let users choose the name of this?
+            const dirName = (() => {
+                if (this.packs.length == 1) {
+                    return this.basename;
+                }
+                else {
+                    const suffix = pack.type === Pack.Types.BehaviorPack  ? "bp"
+                                 : pack.type === Pack.Types.ResourcePack  ? "rp"
+                                 : pack.type === Pack.Types.SkinPack      ? "skins"
+                                 : pack.type === Pack.Types.WorldTemplate ? "wt"
+                                 : null;
+                    if (suffix == null) {
+                        throw Error(`Unknown pack type: ${pack.type}`);
+                    }
+
+                    if (num_of[pack.type] == 1) {
+                        return `${this.basename}-${suffix}`;
+                    }
+                    else {
+                        return `${this.basename}-${suffix}-${idx_of[pack.type]++}`;
+                    }
+                }
+            })();
+            pack.archiveSubDir = this.packs.length > 1 ? dirName : null;
+            pack.installDir    = dirName;
+        }
+    }
+
+    get basename() {
+        return `${this.name}-${this.version.toString()}`;
     }
 
     get archiveName() {
-        const basename = `${this.name}-${this.version.toString()}`;
         if (this.packs.length > 1) {
-            return basename + ".mcaddon";
+            return this.basename + ".mcaddon";
+        }
+        else if (this.packs[0].type === Pack.Types.WorldTemplate) {
+            return this.basename + ".mctemplate";
         }
         else {
-            // FIXME: World templates should have a different suffix.
-            return basename + ".mcpack";
+            return this.basename + ".mcpack";
         }
     }
 };

@@ -17,7 +17,8 @@ function zip(zipPath) {
 
             const entryPath = vinyl.relative;
             if (vinyl.isDirectory()) {
-                // Ignore these. They aren't necessary.
+                // Ignore these. They aren't necessary. And this is why we
+                // don't use gulp-vinyl-zip for this.
             }
             else if (vinyl.isBuffer()) {
                 zip.addBuffer(vinyl.contents, entryPath, opts);
