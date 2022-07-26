@@ -25,7 +25,7 @@ exports.watch = function() {
     watch([
         "package.json",
         "src/**"
-    ], exports.install);
+    ], {ignoreInitial: false}, exports.install);
 };
 
 exports.default = exports.build;

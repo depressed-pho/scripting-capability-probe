@@ -107,9 +107,9 @@ exports.contents = function contents(cb) {
                     tasks.push(
                         function transpile() {
                             // THINKME: Support PureScript as well!!!
-                            return src(srcGlob, {cwd: "src"})
+                            return src(srcGlob, {cwd: "src", sourcemaps: true})
                                 .pipe(transpileTypeScript("src/tsconfig.json"))
-                                .pipe(dest(destPath));
+                                .pipe(dest(destPath, {sourcemaps: "."}));
                         });
                     break;
 

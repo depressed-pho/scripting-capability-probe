@@ -43,6 +43,7 @@ exports.installIfPossible = async function installIfPossible() {
                     const maniPath = path.resolve(packPath, "manifest.json");
                     if (!fs.existsSync(maniPath)) {
                         fancyLog.warn(`Manifest file missing: ${maniPath}`);
+                        continue;
                     }
 
                     const manifest = JSON.parse(await readFile(maniPath));

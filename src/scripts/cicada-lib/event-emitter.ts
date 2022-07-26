@@ -48,7 +48,7 @@ export class EventEmitter {
                 if (listener.once) {
                     this.removeListener(name, listener.fn);
                 }
-                listener.fn.apply(undefined, args);
+                listener.fn(...args);
             }
             return true;
         }
