@@ -7,6 +7,7 @@
     "build": "gulp",
     "clean": "gulp clean",
     "install": "gulp install",
+    "watch": "gulp watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

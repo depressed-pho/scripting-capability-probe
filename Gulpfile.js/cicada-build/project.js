@@ -412,7 +412,7 @@ class Project {
             // THINKME: Should we let users choose the name of this?
             const dirName = (() => {
                 if (this.packs.length == 1) {
-                    return this.basename;
+                    return this.name;
                 }
                 else {
                     const suffix = pack.type === Pack.Types.BehaviorPack  ? "bp"
@@ -425,10 +425,10 @@ class Project {
                     }
 
                     if (num_of[pack.type] == 1) {
-                        return `${this.basename}-${suffix}`;
+                        return `${this.name}-${suffix}`;
                     }
                     else {
-                        return `${this.basename}-${suffix}-${idx_of[pack.type]++}`;
+                        return `${this.name}-${suffix}-${idx_of[pack.type]++}`;
                     }
                 }
             })();
@@ -437,11 +437,8 @@ class Project {
         }
     }
 
-    get basename() {
-        return `${this.name}-${this.version.toString()}`;
-    }
-
     get archiveName() {
+        const basename = `${this.name}-${this.version.toString()}`;
         if (this.packs.length > 1) {
             return this.basename + ".mcaddon";
         }

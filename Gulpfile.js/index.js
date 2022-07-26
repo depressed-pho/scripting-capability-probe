@@ -1,4 +1,4 @@
-const { series, parallel } = require("gulp");
+const { series, parallel, watch } = require("gulp");
 const { clean, manifests, icons, contents, archive,
         installIfPossible } = require("./cicada-build/tasks.js");
 
@@ -20,5 +20,12 @@ exports.install =
         exports.build,
         installIfPossible
     );
+
+exports.watch = function() {
+    watch([
+        "package.json",
+        "src/**"
+    ], exports.install);
+};
 
 exports.default = exports.build;

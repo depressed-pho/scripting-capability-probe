@@ -23,38 +23,40 @@ function validateJSONBuffer(vinyl, enc, buf) /* null | Error */ {
     }
 }
 
-const validateJSON = through2.obj((vinyl, enc, cb) => {
-    if (path.extname(vinyl.path) == ".json") {
-        if (vinyl.isBuffer()) {
-            const e = validateJSONBuffer(vinyl, enc, vinyl.contents);
-            if (e) {
-                cb(e);
+function validateJSON() {
+    return through2.obj((vinyl, enc, cb) => {
+        if (path.extname(vinyl.path) == ".json") {
+            if (vinyl.isBuffer()) {
+                const e = validateJSONBuffer(vinyl, enc, vinyl.contents);
+                if (e) {
+                    cb(e);
+                }
+                else {
+                    cb(null, vinyl);
+                }
+            }
+            else if (vinyl.isStream()) {
+                streamReadAll(vinyl.contents.clone())
+                    .then(buf => {
+                        const e = validateJSONBuffer(vinyl, buf);
+                        if (e) {
+                            cb(e);
+                        }
+                        else {
+                            cb(null, vinyl);
+                        }
+                    })
+                    .else(e => cb(e));
             }
             else {
                 cb(null, vinyl);
             }
         }
-        else if (vinyl.isStream()) {
-            streamReadAll(vinyl.contents.clone())
-                .then(buf => {
-                    const e = validateJSONBuffer(vinyl, buf);
-                    if (e) {
-                        cb(e);
-                    }
-                    else {
-                        cb(null, vinyl);
-                    }
-                })
-                .else(e => cb(e));
-        }
         else {
             cb(null, vinyl);
         }
-    }
-    else {
-        cb(null, vinyl);
-    }
-});
+    });
+}
 
 function transpileTypeScript(tsConfigPath) {
     const tsConfigDefault = {
@@ -73,6 +75,7 @@ function transpileTypeScript(tsConfigPath) {
         true,
         tsConfigDefault,
         fs.existsSync(tsConfigPath) ? requireUncached(tsConfigPath) : {});
+    const tsProj = ts.createProject(tsConfig.compilerOptions);
 
     return gulpIf(
         vinyl => {
@@ -83,7 +86,7 @@ function transpileTypeScript(tsConfigPath) {
             }
             return isTypeScript;
         },
-        ts(tsConfig.compilerOptions)
+        tsProj()
     );
 }
 
@@ -114,7 +117,7 @@ exports.contents = function contents(cb) {
                     tasks.push(
                         function copyData() {
                             return src(srcGlob, {cwd: "src"})
-                                .pipe(validateJSON)
+                                .pipe(validateJSON())
                                 .pipe(dest(destPath));
                         });
                 }
