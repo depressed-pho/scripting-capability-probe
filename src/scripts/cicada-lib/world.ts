@@ -1,4 +1,5 @@
 import { EventEmitter, EventName } from "./event-emitter"
+import { Player, PlayerJoinEvent } from "./player"
 import * as MC from "mojang-minecraft";
 
 interface Event {
@@ -13,10 +14,10 @@ export class World extends EventEmitter {
 
     /** The constructor is public only because of a language
      * limitation. User code must never call it directly. */
-    public constructor() {
+    public constructor(rawWorld: MC.World) {
         super();
 
-        this.#world         = MC.world;
+        this.#world         = rawWorld;
         this.#isReady       = false;
         this.#pendingEvents = [];
 
@@ -32,6 +33,8 @@ export class World extends EventEmitter {
         this.#world.events.tick.subscribe(ev => {
             if (!this.#isReady) {
                 try {
+                    // Strange... this works even if the only player
+                    // resides in the Nether.
                     this.#world.getDimension("overworld").runCommand("testfor @a");
                     this.#isReady = true;
                 }
@@ -48,7 +51,8 @@ export class World extends EventEmitter {
             }
         });
 
-        this.#world.events.playerJoin.subscribe(ev => {
+        this.#world.events.playerJoin.subscribe(rawEv => {
+            const ev: PlayerJoinEvent = { player: new Player(rawEv.player) };
             if (this.#isReady) {
                 this.emit("playerJoin", ev);
             }
@@ -56,10 +60,10 @@ export class World extends EventEmitter {
                 // NOTE: Don't know why but saving "ev" and using it later
                 // will cause a strange ReferenceError. We apparently need
                 // to do a shallow cloning.
-                this.#pendingEvents.push({name: "playerJoin", event: {player: ev.player}});
+                this.#pendingEvents.push({name: "playerJoin", event: ev});
             }
         });
     }
 }
 
-export const world = new World();
+export const world = new World(MC.world);
