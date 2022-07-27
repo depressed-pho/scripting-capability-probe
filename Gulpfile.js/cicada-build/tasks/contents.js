@@ -74,7 +74,9 @@ function transpileTypeScript(tsConfigPath) {
     const tsConfig = merge.recursive(
         true,
         tsConfigDefault,
-        fs.existsSync(tsConfigPath) ? requireUncached(tsConfigPath) : {});
+        fs.existsSync(tsConfigPath)
+            ? requireUncached(path.resolve(process.cwd(), tsConfigPath))
+            : {});
     const tsProj = ts.createProject(tsConfig.compilerOptions);
 
     return gulpIf(

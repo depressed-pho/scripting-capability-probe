@@ -17,7 +17,11 @@ export class ItemStack {
             this.#itemStack = new MC.ItemStack(arg0, ...rest);
         }
         else {
-            this.#itemStack = new MC.ItemStack(MC.Items.get(arg0), ...rest);
+            const ty = MC.Items.get(arg0);
+            if (!ty) {
+                throw Error(`Unknown item ID: ${arg0}`);
+            }
+            this.#itemStack = new MC.ItemStack(ty, ...rest);
         }
     }
 

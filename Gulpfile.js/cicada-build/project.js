@@ -440,13 +440,13 @@ class Project {
     get archiveName() {
         const basename = `${this.name}-${this.version.toString()}`;
         if (this.packs.length > 1) {
-            return this.basename + ".mcaddon";
+            return basename + ".mcaddon";
         }
         else if (this.packs[0].type === Pack.Types.WorldTemplate) {
-            return this.basename + ".mctemplate";
+            return basename + ".mctemplate";
         }
         else {
-            return this.basename + ".mcpack";
+            return basename + ".mcpack";
         }
     }
 };

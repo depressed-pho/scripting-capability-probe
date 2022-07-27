@@ -1,4 +1,6 @@
 import { EventEmitter, EventName } from "./event-emitter"
+import { Entity, ItemUseEvent } from "./entity";
+import { ItemStack } from "./item-stack";
 import { Player, PlayerJoinEvent } from "./player"
 import * as MC from "mojang-minecraft";
 
@@ -62,6 +64,25 @@ export class World extends EventEmitter {
                 // to do a shallow cloning.
                 this.#pendingEvents.push({name: "playerJoin", event: ev});
             }
+        });
+
+        this.#world.events.playerLeave.subscribe(ev => {
+            if (this.#isReady) {
+                this.emit("playerLeave", ev);
+            }
+            else {
+                this.#pendingEvents.push({name: "playerLeave", event: ev});
+            }
+        });
+
+        this.#world.events.itemUse.subscribe(rawEv => {
+            const ev: ItemUseEvent = {
+                item:   new ItemStack(rawEv.item),
+                source: rawEv.source instanceof MC.Player
+                    ? new Player(rawEv.source)
+                    : new Entity(rawEv.source)
+            };
+            this.emit("itemUse", ev);
         });
     }
 }
