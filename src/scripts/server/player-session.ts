@@ -1,6 +1,11 @@
+import { Thread } from "../cicada-lib/thread";
+
 export class Session {
+    public probingThread: Thread|null;
+
     /** Do not call this directly. */
     public constructor() {
+        this.probingThread = null;
     }
 }
 

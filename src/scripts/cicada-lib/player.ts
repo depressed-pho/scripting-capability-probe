@@ -13,6 +13,11 @@ export class Player extends Entity {
         this.#player = rawPlayer;
     }
 
+    /** Package private: user code should not use this. */
+    public get raw(): MC.Player {
+        return this.#player;
+    }
+
     public get name(): string {
         return this.#player.name;
     }
