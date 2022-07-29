@@ -1,3 +1,5 @@
+import { console } from "./console";
+
 /**
  * An implementation of node.js EventEmitter that is suitable for the Bedrock engine.
  */
@@ -48,7 +50,15 @@ export class EventEmitter {
                 if (listener.once) {
                     this.removeListener(name, listener.fn);
                 }
-                listener.fn(...args);
+                /* QuickJS, the current interpreter used by Minecraft BE,
+                 * doesn't provide a mechanism to catch unhandled rejection
+                 * of promises. But it's common that the listener is
+                 * actually an async function and it doesn't catch
+                 * exceptions. When that happens exceptions get lost and
+                 * cause a great confusion, so if the function returns a
+                 * promise attach a handler to catch them all. */
+                const ret = listener.fn(...args);
+                Promise.resolve(ret).catch(e => console.error(e));
             }
             return true;
         }
