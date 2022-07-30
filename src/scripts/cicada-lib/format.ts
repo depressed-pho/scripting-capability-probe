@@ -8,17 +8,24 @@ export function format(fmt: string, ...args: any[]): string {
                 case "%":
                     return "%";
                 case "o":
+                    return args.length > 0
+                        ? inspect(args.shift())
+                        : matched;
                 case "O":
+                    return args.length > 0
+                        ? inspect(args.shift(), {showHidden: true})
+                        : matched;
                 case "d":
                 case "i":
                 case "s":
-                    const removed = args.splice(1, 1);
-                    return removed.length > 0 ? stringify(removed[0]) : matched;
+                    return args.length > 0
+                        ? stringify(args.shift())
+                        : matched;
                 default:
                     if (intWidth != null || intPrec != null) {
-                        const removed = args.splice(1, 1);
-                        if (removed.length > 0) {
-                            return String(removed[0])
+                        if (args.length > 0) {
+                            const int = args.shift();
+                            return String(int)
                                 .padStart(intPrec  || 0, "0")
                                 .padStart(intWidth || 0, " ");
                         }
@@ -27,11 +34,11 @@ export function format(fmt: string, ...args: any[]): string {
                         }
                     }
                     else if (floatWidth != null || floatPrec != null) {
-                        const removed = args.splice(1, 1);
-                        if (removed.length > 0) {
-                            let str = floatPrec != null
-                                ? Number(removed[0]).toFixed(floatPrec)
-                                : String(removed[0]);
+                        if (args.length > 0) {
+                            const float = args.shift();
+                            const str   = floatPrec != null
+                                ? Number(float).toFixed(floatPrec)
+                                : String(float);
                             return str.padStart(floatWidth || 0, " ");
                         }
                         else {

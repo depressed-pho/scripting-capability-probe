@@ -9,7 +9,7 @@ export interface InspectOptions {
     maxStringLength?: number,
     breakLength?: number,
     compact?: boolean,
-    sorted?: boolean | ((x: any, y: any) => number),
+    sorted?: boolean | ((x: PropertyKey, y: PropertyKey) => number),
     getters?: boolean | "get" | "set"
 }
 
@@ -27,12 +27,16 @@ const defaultOpts: Required<InspectOptions> = {
 };
 
 enum TokenType {
+    BigInt,
+    Boolean,
     Name,
+    Null,
+    Number,
     Special,
     String,
     Symbol,
     Undefined,
-    Null
+    Unknown
 }
 
 interface Context {
@@ -43,6 +47,14 @@ interface Context {
     seen: Set<any>,
     circular: Map<any, number>
 }
+
+const builtinObjectNames: Set<string> =
+    new Set(Object.getOwnPropertyNames(globalThis));
+
+/* The TypedArray constructor: used for checking if an object is some kind
+ * of TypedArray. */
+const TypedArray: Function =
+    Object.getPrototypeOf(Int8Array);
 
 export function inspect(obj: any, opts: InspectOptions = {}): string {
     const ctx: Context = {
@@ -56,7 +68,7 @@ export function inspect(obj: any, opts: InspectOptions = {}): string {
     const doc  = inspectValue(obj, ctx);
     const sDoc = opts.compact
         ? PP.renderCompact(doc)
-        : PP.renderSmart(0.4, ctx.opts.breakLength, doc);
+        : PP.renderSmart(1.0, ctx.opts.breakLength, doc);
     return PP.displayS(sDoc);
 }
 
@@ -77,21 +89,47 @@ function pOnlyEnumerable(desc: PropertyDescriptor): boolean {
     return !!desc.enumerable;
 }
 
-function inspectValue(obj: any, ctx: Context): PP.Doc {
-    switch (typeof obj) {
+function inspectValue(val: any, ctx: Context): PP.Doc {
+    switch (typeof val) {
+        case "undefined":
+            return ctx.stylise(PP.text("undefined"), TokenType.Undefined);
+        case "boolean":
+            return ctx.stylise(PP.bool(val), TokenType.Boolean);
+        case "number":
+            return inspectNumber(val, ctx);
+        case "bigint":
+            return inspectBigInt(val, ctx);
         case "string":
-            return inspectString(obj, ctx);
+            return inspectString(val, ctx);
+        case "symbol":
+            return ctx.stylise(PP.text(val.toString()), TokenType.Symbol);
+        case "function":
+            return inspectObject(val, ctx);
         case "object":
-            if (obj === null) {
+            if (val === null) {
                 return ctx.stylise(PP.text("null"), TokenType.Null);
             }
             else {
-                return inspectObject(obj, ctx);
+                return inspectObject(val, ctx);
             }
         default:
-            // FIXME: Detect more types.
-            return PP.text(String(obj));
+            return ctx.stylise(PP.text(String(val)), TokenType.Unknown);
     }
+}
+
+function inspectNumber(num: number, ctx: Context): PP.Doc {
+    if (Object.is(num, -0)) {
+        // Mathematical nonsence... This is the only way to distinguish 0
+        // from -0. LOL.
+        return ctx.stylise(PP.text("-0"), TokenType.Number);
+    }
+    else {
+        return ctx.stylise(PP.number(num), TokenType.Number);
+    }
+}
+
+function inspectBigInt(int: bigint, ctx: Context): PP.Doc {
+    return ctx.stylise(PP.text(`${String(int)}n`), TokenType.BigInt);
 }
 
 function inspectString(str: string, ctx: Context): PP.Doc {
@@ -128,12 +166,12 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         return ctx.stylise(PP.text(`[Circular *${idx}]`), TokenType.Special);
     }
 
-    const ctorName = constructorNameOf(obj);
+    const ctorName = getConstructorName(obj, ctx);
     // Only list the tag in case it's non-enumerable / not an own property,
     // otherwise we'd print this twice.
     const tag      = ctx.opts.showHidden
-        ? (Object.hasOwn(obj, Symbol.toStringTag)       ? obj[Symbol.toStringTag] : null)
-        : (obj.propertyIsEnumerable(Symbol.toStringTag) ? obj[Symbol.toStringTag] : null);
+        ? (obj.hasOwnProperty(Symbol.toStringTag)       ? undefined : obj[Symbol.toStringTag])
+        : (obj.propertyIsEnumerable(Symbol.toStringTag) ? undefined : obj[Symbol.toStringTag]);
 
     // If we have recursed too many times, only show the name of
     // constructor and exit.
@@ -142,65 +180,110 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         return ctx.stylise(PP.brackets(prefix), TokenType.Special);
     }
 
-    let props: [PropertyKey, PropertyDescriptor][];
-    let braces: [PP.Doc, PP.Doc];
     let inspector: (obj: any, ctx: Context) => PP.Doc[];
+    let braces: [PP.Doc, PP.Doc];
+    let props: [PropertyKey, PropertyDescriptor][];
     if (Array.isArray(obj)) {
-        // Only show the constructor for non-ordinary ("Foo [...]") arrays.
-        const prefix = (ctorName !== "Array" || tag !== null)
+        // Only show the constructor for non-ordinary ("Foo(n) [...]") arrays.
+        const prefix = (ctorName !== "Array" || tag != null)
             ? PP.beside(mkPrefix(ctorName, tag, "Array", obj.length), PP.space)
             : PP.empty;
-        props     = Object.entries(Object.getOwnPropertyDescriptors(obj))
-                          .filter(([key, desc]) => !isIndex(key) && ctx.propFilter(desc));
-        braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
         inspector = inspectArray;
+        braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
+        // Extra non-index properties: some arrays have ones.
+        props     = getOwnProperties(obj, ctx, key => !isIndex(key));
+    }
+    else if (obj instanceof TypedArray) {
+        // Don't be confused: TypedArray isn't a global object.
+        const prefix = PP.beside(
+            mkPrefix(ctorName, tag, (obj as any).name, (obj as any).length),
+            PP.space);
+        inspector = inspectTypedArray;
+        braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
+        props     = getOwnProperties(obj, ctx, key => !isIndex(key));
+    }
+    else if (obj instanceof Set) { // Not great, but there is no Set.isSet().
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        inspector = inspectSet;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+    }
+    else if (obj instanceof Map) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        inspector = inspectMap;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
     }
     // FIXME: Detect more containers
     else {
-        braces = [PP.lbrace, PP.rbrace];
         inspector = () => [PP.text("FIXME")];
+        braces = [PP.lbrace, PP.rbrace];
+        props = []; // FIXME
+    }
+
+    if (ctx.opts.showHidden) {
+        props.push(...getPrototypeProperties(obj, ctx));
+    }
+    if (ctx.opts.sorted) {
+        if (typeof ctx.opts.sorted === "function") {
+            props.sort(([k1, ], [k2, ]) => (ctx.opts.sorted as any)(k1, k2));
+        }
+        else {
+            props.sort();
+        }
     }
 
     ctx.seen.add(obj);
     ctx.currentDepth++;
-    const doc = PP.softlineCat(
+    const elems = inspector(obj, ctx);
+    elems.push(
+        ...(props.map(([key, desc]) => inspectProperty(obj, key, desc, ctx))));
+    ctx.currentDepth--;
+    ctx.seen.delete(obj);
+
+    /* Inspecting the elements may recurse into inspectObject() and may
+     * find circular references. When that happens there will be an entry
+     * in the circulation map for the object we are inspecting. */
+    const circulationIdx = ctx.circular.get(obj);
+    if (circulationIdx != null) {
+        /* Attach a circulation reference to the opening brace.
+         *
+         *   let foo = {};
+         *   foo.bar = foo;
+         *
+         * The above object foo will be shown as:
+         *
+         *   <ref *1> { bar: [Circular *1] }
+         */
+        braces[0] = PP.spaceCat(
+            ctx.stylise(PP.text(`<ref *${circulationIdx}>`), TokenType.Special),
+            braces[0]);
+    }
+
+    return PP.softlineCat(
         PP.nest(
             ctx.opts.indentationWidth,
             PP.softlineCat(
                 braces[0],
                 PP.fillSep(
                     PP.punctuate(
-                        PP.comma, inspector(obj, ctx))))),
+                        PP.comma, elems)))),
         braces[1]);
-    ctx.currentDepth--;
-    ctx.seen.delete(obj);
-/*
-    doc = inspector(obj, ctx);
-    for (const [key, desc] of props) {
-        tokens.push(inspectProperty(obj, key, desc, ctx));
-    }
-    if (ctx.opts.showHidden) {
-        for (const [key, desc] of getPrototypeProperties(obj)) {
-            tokens.push(
-        }
-    }
-*/
-    return doc;
 }
 
-function inspectArray(obj: any[], ctx: Context): PP.Doc[] {
-    const numElemsToShow = Math.min(obj.length, ctx.opts.maxArrayLength);
-    const numHidden      = obj.length - numElemsToShow;
+function inspectArray(arr: any[], ctx: Context): PP.Doc[] {
+    const numElemsToShow = Math.min(arr.length, ctx.opts.maxArrayLength);
+    const numHidden      = arr.length - numElemsToShow;
     const elems          = [];
     for (let i = 0; i < numElemsToShow; i++) {
         const key  = String(i);
-        const desc = Object.getOwnPropertyDescriptor(obj, key);
+        const desc = Object.getOwnPropertyDescriptor(arr, key);
         if (desc) {
-            elems.push(inspectProperty(obj, key, desc, ctx, true));
+            elems.push(inspectProperty(arr, key, desc, ctx, true));
         }
         else {
             // Missing index: this is a sparse array.
-            return inspectSparseArray(obj, ctx);
+            return inspectSparseArray(arr, ctx);
         }
     }
     if (numHidden > 0) {
@@ -209,9 +292,9 @@ function inspectArray(obj: any[], ctx: Context): PP.Doc[] {
     return elems;
 }
 
-function inspectSparseArray(obj: any[], ctx: Context): PP.Doc[] {
-    const numElemsToShow = Math.min(obj.length, ctx.opts.maxArrayLength);
-    const props          = Object.entries(Object.getOwnPropertyDescriptors(obj));
+function inspectSparseArray(arr: any[], ctx: Context): PP.Doc[] {
+    const numElemsToShow = Math.min(arr.length, ctx.opts.maxArrayLength);
+    const props          = Object.entries(Object.getOwnPropertyDescriptors(arr));
     const elems          = [];
 
     let expectedIdx = 0;
@@ -231,11 +314,64 @@ function inspectSparseArray(obj: any[], ctx: Context): PP.Doc[] {
                     TokenType.Undefined));
             expectedIdx = actualIdx;
         }
-        elems.push(inspectProperty(obj, key, desc, ctx, true));
+        elems.push(inspectProperty(arr, key, desc, ctx, true));
         expectedIdx++;
     }
 
-    const numHidden = obj.length - expectedIdx;
+    const numHidden = arr.length - expectedIdx;
+    if (numHidden > 0) {
+        elems.push(remainingText(numHidden));
+    }
+    return elems;
+}
+
+function inspectTypedArray(arr: any, ctx: Context): PP.Doc[] {
+    const numElemsToShow = Math.min(arr.length, ctx.opts.maxArrayLength);
+    const numHidden      = arr.length - numElemsToShow;
+    const elems          = new Array(numElemsToShow);
+    const elemInspector  = arr.length > 0 && typeof arr[0] === "number"
+                           ? inspectNumber
+                           : inspectBigInt;
+    for (let i = 0; i < numElemsToShow; i++) {
+        elems[i] = (elemInspector as any)(arr[i], ctx);
+    }
+    if (numHidden > 0) {
+        elems.push(remainingText(numHidden));
+    }
+    return elems;
+}
+
+function inspectSet(set: Set<any>, ctx: Context): PP.Doc[] {
+    const numElemsToShow = Math.min(set.size, ctx.opts.maxArrayLength);
+    const numHidden      = set.size - numElemsToShow;
+    const elems          = [];
+    for (const elem of set) {
+        if (elems.length >= numElemsToShow) {
+            break;
+        }
+        elems.push(inspectValue(elem, ctx));
+    }
+    if (numHidden > 0) {
+        elems.push(remainingText(numHidden));
+    }
+    return elems;
+}
+
+function inspectMap(map: Map<any, any>, ctx: Context): PP.Doc[] {
+    const numElemsToShow = Math.min(map.size, ctx.opts.maxArrayLength);
+    const numHidden      = map.size - numElemsToShow;
+    const elems          = [];
+    for (const [key, val] of map) {
+        if (elems.length >= numElemsToShow) {
+            break;
+        }
+        elems.push(
+            PP.fillSep(
+                [ inspectValue(key, ctx),
+                  PP.text("=>"),
+                  inspectValue(val, ctx)
+                ]));
+    }
     if (numHidden > 0) {
         elems.push(remainingText(numHidden));
     }
@@ -243,7 +379,7 @@ function inspectSparseArray(obj: any[], ctx: Context): PP.Doc[] {
 }
 
 function inspectProperty(obj: any, key: PropertyKey, desc: PropertyDescriptor,
-                        ctx: Context, valueOnly = false): PP.Doc {
+                         ctx: Context, valueOnly = false): PP.Doc {
     let value: PP.Doc;
     if (desc.value !== undefined) {
         value = inspectValue(desc.value, ctx);
@@ -294,7 +430,7 @@ function inspectProperty(obj: any, key: PropertyKey, desc: PropertyDescriptor,
             name = ctx.stylise(PP.text(JSON.stringify(key)), TokenType.String);
         }
 
-        return PP.softlineCat(PP.beside(name, PP.comma), value);
+        return PP.softlineCat(PP.beside(name, PP.colon), value);
     }
 }
 
@@ -303,15 +439,67 @@ function remainingText(numHidden: number): PP.Doc {
         `... ${numHidden} more item${numHidden > 1 ? "s" : ""}`.split(" ").map(PP.text));
 }
 
-function constructorNameOf(obj: any): string|null {
-    while (obj) {
-        const desc = Object.getOwnPropertyDescriptor(obj, "constructor");
-        if (desc) {
-            return desc.value.name;
+function getConstructorName(obj: any, ctx: Context): string|null {
+    for (let i = 0; obj; i++) {
+        if (i >= ctx.opts.depth) {
+            return "<Complex prototype>";
+        }
+        else {
+            const ctorDesc = Object.getOwnPropertyDescriptor(obj, "constructor");
+            if (ctorDesc) {
+                return ctorDesc.value.name;
+            }
+            obj = Object.getPrototypeOf(obj);
+        }
+    }
+    return null;
+}
+
+function getOwnProperties(obj: any,
+                          ctx: Context,
+                          keyFilter?: (key: PropertyKey) => boolean
+                         ): [PropertyKey, PropertyDescriptor][] {
+    if (keyFilter) {
+        return Reflect.ownKeys(obj)
+                      .filter(keyFilter)
+                      .map(key => [key, Object.getOwnPropertyDescriptor(obj, key)] as any)
+                      .filter(([, desc]) => ctx.propFilter(desc));
+    }
+    else {
+        return Object.entries(Object.getOwnPropertyDescriptors(obj))
+                     .filter(([, desc]) => ctx.propFilter(desc));
+    }
+}
+
+function getPrototypeProperties(obj: any, ctx: Context): [PropertyKey, PropertyDescriptor][] {
+    const keys = new Set<PropertyKey>();
+    const props: [PropertyKey, PropertyDescriptor][] = [];
+    obj = Object.getPrototypeOf(obj);
+    for (let i = 0; i < ctx.opts.depth; i++) {
+        // Stop as soon as a null prototype is encountered.
+        if (obj == null) {
+            break;
+        }
+
+        // Stop as soon as a built-in object type is detected. Nothing good
+        // come from reflecting built-in objects. It can even enter into an
+        // infinite loop for some unknown reason (a possible bug in the
+        // interpreter).
+        const ctorDesc = Object.getOwnPropertyDescriptor(obj, "constructor");
+        if (ctorDesc && builtinObjectNames.has(ctorDesc.value.name)) {
+            break;
+        }
+
+        for (const key of Reflect.ownKeys(obj)) {
+            /* Ignore constructors: they are separately inspected. */
+            if (key !== "constructor" && !keys.has(key)) {
+                keys.add(key);
+                props.push([key, Object.getOwnPropertyDescriptor(obj, key)!]);
+            }
         }
         obj = Object.getPrototypeOf(obj);
     }
-    return null;
+    return props;
 }
 
 function mkPrefix(ctorName: string|null, tag: string|null, fallback: string, size?: number): PP.Doc {
@@ -335,11 +523,13 @@ function mkPrefix(ctorName: string|null, tag: string|null, fallback: string, siz
     }
 }
 
-function isIndex(key: string|Symbol): boolean {
-    if (typeof key === "string") {
-        return /^[0-9]+$/.test(key);
-    }
-    else {
-        return false;
+function isIndex(key: PropertyKey): boolean {
+    switch (typeof key) {
+        case "string":
+            return /^[0-9]+$/.test(key);
+        case "number":
+            return true;
+        default:
+            return false;
     }
 }
