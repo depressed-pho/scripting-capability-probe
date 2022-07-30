@@ -14,8 +14,8 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
 
     //player.runCommand(
     //    `tellraw @s {"rawtext": [{"text": "${player.name} joined the world."}]}`);
-    //console.error(Error("test"));
-    console.error(Thread);
+    console.error(new Number(67));
+    console.error({a: 1, b: 2});
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */

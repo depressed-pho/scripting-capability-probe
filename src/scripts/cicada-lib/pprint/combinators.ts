@@ -95,7 +95,10 @@ export function vcat(ds: Doc[]): Doc {
     return fold(linebreakCat, ds);
 }
 
-function fold(f: (x: Doc, y: Doc) => Doc, ds: Doc[]): Doc {
+/** Fold an array of documents with a given binary operator. If the array
+ * is empty, the resulting document will also be {@link empty}.
+ */
+export function fold(f: (x: Doc, y: Doc) => Doc, ds: Doc[]): Doc {
     return ds.length == 0
         ? empty
         : ds.reduce(f);

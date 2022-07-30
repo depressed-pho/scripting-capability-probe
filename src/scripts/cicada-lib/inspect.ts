@@ -29,10 +29,12 @@ const defaultOpts: Required<InspectOptions> = {
 enum TokenType {
     BigInt,
     Boolean,
+    Date,
     Function,
     Name,
     Null,
     Number,
+    RegExp,
     Special,
     String,
     Symbol,
@@ -56,6 +58,24 @@ const builtinObjectNames: Set<string> =
  * of TypedArray. */
 const TypedArray: Function =
     Object.getPrototypeOf(Int8Array);
+
+const boxedPrimConstructors: Set<Function> = (() => {
+    /* The interpreter may not support all the known primitive types. That
+     * is, we can't simply do "obj instanceof BigInt" if BigInt isn't
+     * supported. */
+    const possibleNames = new Set<string>([
+        "Number",
+        "String",
+        "Boolean",
+        "BigInt",
+        "Symbol"
+    ]);
+    return new Set<Function>(
+        Object.getOwnPropertyNames(globalThis)
+              .filter(name => possibleNames.has(name) &&
+                              typeof (globalThis as any)[name] === "function")
+              .map(name => (globalThis as any)[name] as Function));
+})();
 
 export function inspect(obj: any, opts: InspectOptions = {}): string {
     const ctx: Context = {
@@ -144,11 +164,13 @@ function inspectString(str: string, ctx: Context): PP.Doc {
     return PP.beside(
         PP.nest(
             ctx.opts.indentationWidth,
-            PP.vsep(
+            PP.hcat(
                 PP.punctuate(
-                    PP.text(" +"),
+                    PP.beside(
+                        PP.text(" +"),
+                        PP.hardline),
                     str.split(/(?<=\n)/)
-                        .map(line => ctx.stylise(PP.text(JSON.stringify(line)), TokenType.String))))),
+                       .map(line => ctx.stylise(PP.text(JSON.stringify(line)), TokenType.String))))),
         trailer);
 }
 
@@ -177,9 +199,13 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     // If we have recursed too many times, only show the name of
     // constructor and exit.
     if (ctx.currentDepth > ctx.opts.depth) {
-        const prefix = mkContainerPrefix(ctorName, tag, "Object");
+        const prefix = mkPrefix(ctorName, tag, "Object");
         return ctx.stylise(PP.brackets(prefix), TokenType.Special);
     }
+
+    const protoProps = ctx.opts.showHidden
+        ? getPrototypeProperties(obj, ctx)
+        : [];
 
     let inspector: (obj: any, ctx: Context) => PP.Doc[];
     let braces: [PP.Doc, PP.Doc];
@@ -187,7 +213,7 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     if (Array.isArray(obj)) {
         // Only show the constructor for non-ordinary ("Foo(n) [...]") arrays.
         const prefix = (ctorName !== "Array" || tag != null)
-            ? PP.beside(mkContainerPrefix(ctorName, tag, "Array", obj.length), PP.space)
+            ? PP.beside(mkPrefix(ctorName, tag, "Array", obj.length), PP.space)
             : PP.empty;
         inspector = inspectArray;
         braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
@@ -197,49 +223,147 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     else if (obj instanceof TypedArray) {
         // Don't be confused: TypedArray isn't a global object.
         const prefix = PP.beside(
-            mkContainerPrefix(ctorName, tag, (obj as any).name, (obj as any).length),
+            mkPrefix(ctorName, tag, (obj as any).name, (obj as any).length),
             PP.space);
         inspector = inspectTypedArray;
         braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
         props     = getOwnProperties(obj, ctx, key => !isIndex(key));
     }
     else if (obj instanceof Set) { // Not great, but there is no Set.isSet().
-        const prefix = PP.beside(mkContainerPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
         inspector = inspectSet;
         braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
         props     = getOwnProperties(obj, ctx);
     }
     else if (obj instanceof Map) {
-        const prefix = PP.beside(mkContainerPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
         inspector = inspectMap;
         braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
         props     = getOwnProperties(obj, ctx);
     }
     else if (typeof obj === "function") {
         const prefix = mkFunctionPrefix(obj, ctorName, tag);
-        props     = getOwnProperties(obj, ctx);
-        if (props.length == 0) {
-            const protoProps = ctx.opts.showHidden
-                ? getPrototypeProperties(obj, ctx)
-                : [];
-            if (protoProps.length == 0) {
-                // Special case: the function has no interesting
-                // properties.
-                return ctx.stylise(prefix, TokenType.Function);
-            }
+        const base   = ctx.stylise(prefix, TokenType.Function);
+        props = getOwnProperties(obj, ctx);
+        if (props.length == 0 && protoProps.length == 0) {
+            // Special case: the function has no extra properties.
+            return base;
         }
         inspector = inspectNothing;
-        braces    = [PP.spaceCat(ctx.stylise(prefix, TokenType.Function), PP.lbrace), PP.rbrace];
+        braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
     }
-    // FIXME: Detect more containers
+    else if (obj instanceof RegExp) {
+        const prefix = mkRegExpPrefix(ctorName, tag);
+        const base   = ctx.stylise(PP.beside(prefix, PP.text(obj.toString())), TokenType.RegExp);
+        props = getOwnProperties(obj, ctx);
+        if (props.length == 0 && protoProps.length == 0) {
+            // Special case: the RegExp has no extra properties.
+            return base;
+        }
+        inspector = inspectNothing;
+        braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
+    }
+    else if (obj instanceof Date) {
+        const prefix = PP.beside(mkDatePrefix(ctorName, tag), PP.space);
+        // THINKME: Maybe we should use toISOString() instead?
+        const base   = ctx.stylise(PP.beside(prefix, PP.text(obj.toLocaleString())), TokenType.Date);
+        props = getOwnProperties(obj, ctx);
+        if (props.length == 0 && protoProps.length == 0) {
+            // Special case: the Date has no extra properties.
+            return base;
+        }
+        inspector = inspectNothing;
+        braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
+    }
+    else if (obj instanceof Error) {
+        const prefix = mkErrorPrefix(obj, ctorName, tag);
+        const base   = PP.nest(ctx.opts.indentationWidth, prefix);
+        props = getOwnProperties(obj, ctx);
+
+        // Print .cause even if it's not enumerable.
+        if (obj.hasOwnProperty("cause") && !props.some(([key, ]) => key == "cause")) {
+            props.push(
+                ["cause", Object.getOwnPropertyDescriptor(obj, "cause")!]);
+        }
+
+        // Print .errors in AggregateError even if it's not enumerable.
+        if (obj.hasOwnProperty("errors") && !props.some(([key, ]) => key == "errors")) {
+            props.push(
+                ["errors", Object.getOwnPropertyDescriptor(obj, "errors")!]);
+        }
+
+        if (props.length == 0 && protoProps.length == 0) {
+            // Special case: the Error has no extra properties.
+            return base;
+        }
+
+        inspector = inspectNothing;
+        braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
+    }
+    else if (obj instanceof ArrayBuffer || obj instanceof SharedArrayBuffer) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "<unknown>"), PP.space);
+        inspector = inspectNothing;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+        // Print .byteLength even if it's not enumerable. It might be a
+        // special property that even Object.getOwnPropertyDescriptor()
+        // doesn't find.
+        if (!props.some(([key, ]) => key == "byteLength")) {
+            const desc = Object.getOwnPropertyDescriptor(obj, "byteLength");
+            props.push(["byteLength", desc || {value: obj.byteLength}]);
+        }
+    }
+    else if (obj instanceof DataView) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "DataView"), PP.space);
+        inspector = inspectNothing;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+        // Print its certain properties even if they aren't
+        // enumerable. They might be special properties that even
+        // Object.getOwnPropertyDescriptor() doesn't find.
+        for (const k of ["byteLength", "byteOffset", "buffer"]) {
+            if (!props.some(([key, ]) => key == k)) {
+                const desc = Object.getOwnPropertyDescriptor(obj, k);
+                props.push([k, desc || {value: (obj as any)[k]}]);
+            }
+        }
+    }
+    else if (obj instanceof Promise) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "Promise"), PP.space);
+        // NOTE: It is impossible to inspect the internal state of Promise
+        // without using interpreter-specific private methods.
+        inspector = () => [ctx.stylise(PP.text("<state unknown>"), TokenType.Special)];
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+    }
+    else if (obj instanceof WeakSet || obj instanceof WeakMap) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "<unknown>"), PP.space);
+        // NOTE: It is impossible to inspect the elements of weak
+        // containers without using interpreter-specific private methods.
+        inspector = () => [ctx.stylise(PP.text("<items unknown>"), TokenType.Special)];
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+    }
+    else if (obj.constructor != null && boxedPrimConstructors.has(obj.constructor)) {
+        const prefix = mkBoxedPrimPrefix(ctorName!, tag);
+        const base   = PP.spaceCat(prefix, inspectValue(obj.valueOf(), ctx));
+        props     = getOwnProperties(obj, ctx);
+        if (props.length == 0 && protoProps.length == 0) {
+            // Special case: the boxed primitive has no extra properties.
+            return base;
+        }
+        inspector = inspectNothing;
+        braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
+    }
     else {
-        inspector = () => [PP.text("FIXME")];
-        braces = [PP.lbrace, PP.rbrace];
-        props = []; // FIXME
+        const prefix = mkPlainObjectPrefix(ctorName, tag);
+        inspector = inspectNothing;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
     }
 
     if (ctx.opts.showHidden) {
-        props.push(...getPrototypeProperties(obj, ctx));
+        props.push(...protoProps);
     }
     if (ctx.opts.sorted) {
         if (typeof ctx.opts.sorted === "function") {
@@ -523,7 +647,9 @@ function getPrototypeProperties(obj: any, ctx: Context): [PropertyKey, PropertyD
     return props;
 }
 
-function mkContainerPrefix(ctorName: string|null, tag: string|null, fallback: string, size?: number): PP.Doc {
+// Do not use this for functions, classes, RegExps, Dates, Errors, boxed
+// primitives, or plain Objects.
+function mkPrefix(ctorName: string|null, tag: string|null, fallback: string, size?: number): PP.Doc {
     const sizeStr = size != null ? `(${size})` : "";
 
     if (ctorName != null) {
@@ -609,6 +735,111 @@ function mkClassPrefix(func: Function, ctorName: string|null, tag: string|null):
     }
 
     return PP.brackets(prefix);
+}
+
+function mkRegExpPrefix(ctorName: string|null, tag: string|null): PP.Doc {
+    let prefix;
+
+    // Don't name the constructor if it's "RegExp".
+    if (ctorName != null && ctorName != "RegExp") {
+        prefix = PP.beside(PP.text(ctorName), PP.space);
+    }
+    else {
+        prefix = PP.empty;
+    }
+
+    if (tag != null && tag != ctorName) {
+        prefix = PP.beside(prefix, PP.beside(PP.brackets(PP.text(tag)), PP.space));
+    }
+
+    return prefix;
+}
+
+function mkDatePrefix(ctorName: string|null, tag: string|null): PP.Doc {
+    let prefix;
+
+    // Always enclose the name of constructor.
+    if (ctorName != null && ctorName != "Date") {
+        prefix = PP.brackets(PP.text(ctorName));
+    }
+    else {
+        prefix = PP.text("[Date]");
+    }
+
+    if (tag != null && tag != ctorName) {
+        prefix = PP.spaceCat(prefix, PP.brackets(PP.text(tag)));
+    }
+
+    return prefix;
+}
+
+function mkErrorPrefix(err: Error, ctorName: string|null, tag: string|null): PP.Doc {
+    const name =
+          err.name != null ? String(err.name)
+        : ctorName != null ? ctorName
+        : "Error";
+    const message = err.message != null ? String(err.message) : "";
+
+    // Error.prototype.stack is a non-standard property and we can make
+    // ABSOLUTELY NO assumptions about its contents.
+    let stack = err.stack != null ? String(err.stack) : "";
+
+    if (stack.includes(name) && stack.includes(message)) {
+        // .stack contains both the name and the message. *Assume* the
+        // first line of .stack is where they are shown. There is nowhere
+        // we can put the tag but we can't do anything about it.
+    }
+    else {
+        let taggedName = name;
+        if (ctorName != null && ctorName != name) {
+            taggedName += ` [${ctorName}]`;
+        }
+        if (tag != null && tag != ctorName) {
+            taggedName += ` [${tag}]`;
+        }
+        stack =
+            `${taggedName}: ${message}` +
+            (stack != "" ? "\n" + stack : "");
+    }
+
+    // Remove potential indentations of the stacktrace, since we do it in
+    // our own way.
+    const lines = stack.split("\n").map(line => PP.text(line.trim()));
+
+    if (lines.length == 1) {
+        // There seems to be no stack trace. Wrap it in brackets.
+        return PP.brackets(lines[0]!);
+    }
+    else {
+        return PP.hcat(PP.punctuate(PP.hardline, lines));
+    }
+}
+
+function mkBoxedPrimPrefix(ctorName: string, tag: string|null): PP.Doc {
+    let prefix = PP.brackets(PP.text(ctorName));
+
+    if (tag != null && tag != ctorName) {
+        prefix = PP.spaceCat(prefix, PP.brackets(PP.text(tag)));
+    }
+
+    return prefix;
+}
+
+function mkPlainObjectPrefix(ctorName: string|null, tag: string|null): PP.Doc {
+    let prefix;
+
+    if (ctorName != null && ctorName != "Object") {
+        prefix = PP.beside(PP.text(ctorName), PP.space);
+    }
+    else {
+        prefix = PP.empty;
+    }
+
+    if (tag != null && tag != ctorName) {
+        prefix = PP.beside(prefix, PP.beside(PP.brackets(PP.text(tag)), PP.space));
+    }
+
+    return prefix;
 }
 
 function isIndex(key: PropertyKey): boolean {
