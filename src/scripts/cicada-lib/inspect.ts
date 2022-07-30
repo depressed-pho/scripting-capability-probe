@@ -29,6 +29,7 @@ const defaultOpts: Required<InspectOptions> = {
 enum TokenType {
     BigInt,
     Boolean,
+    Function,
     Name,
     Null,
     Number,
@@ -176,7 +177,7 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     // If we have recursed too many times, only show the name of
     // constructor and exit.
     if (ctx.currentDepth > ctx.opts.depth) {
-        const prefix = mkPrefix(ctorName, tag, "Object");
+        const prefix = mkContainerPrefix(ctorName, tag, "Object");
         return ctx.stylise(PP.brackets(prefix), TokenType.Special);
     }
 
@@ -186,7 +187,7 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     if (Array.isArray(obj)) {
         // Only show the constructor for non-ordinary ("Foo(n) [...]") arrays.
         const prefix = (ctorName !== "Array" || tag != null)
-            ? PP.beside(mkPrefix(ctorName, tag, "Array", obj.length), PP.space)
+            ? PP.beside(mkContainerPrefix(ctorName, tag, "Array", obj.length), PP.space)
             : PP.empty;
         inspector = inspectArray;
         braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
@@ -196,23 +197,39 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     else if (obj instanceof TypedArray) {
         // Don't be confused: TypedArray isn't a global object.
         const prefix = PP.beside(
-            mkPrefix(ctorName, tag, (obj as any).name, (obj as any).length),
+            mkContainerPrefix(ctorName, tag, (obj as any).name, (obj as any).length),
             PP.space);
         inspector = inspectTypedArray;
         braces    = [PP.beside(prefix, PP.lbracket), PP.rbracket];
         props     = getOwnProperties(obj, ctx, key => !isIndex(key));
     }
     else if (obj instanceof Set) { // Not great, but there is no Set.isSet().
-        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        const prefix = PP.beside(mkContainerPrefix(ctorName, tag, "Set", obj.size), PP.space);
         inspector = inspectSet;
         braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
         props     = getOwnProperties(obj, ctx);
     }
     else if (obj instanceof Map) {
-        const prefix = PP.beside(mkPrefix(ctorName, tag, "Set", obj.size), PP.space);
+        const prefix = PP.beside(mkContainerPrefix(ctorName, tag, "Set", obj.size), PP.space);
         inspector = inspectMap;
         braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
         props     = getOwnProperties(obj, ctx);
+    }
+    else if (typeof obj === "function") {
+        const prefix = mkFunctionPrefix(obj, ctorName, tag);
+        props     = getOwnProperties(obj, ctx);
+        if (props.length == 0) {
+            const protoProps = ctx.opts.showHidden
+                ? getPrototypeProperties(obj, ctx)
+                : [];
+            if (protoProps.length == 0) {
+                // Special case: the function has no interesting
+                // properties.
+                return ctx.stylise(prefix, TokenType.Function);
+            }
+        }
+        inspector = inspectNothing;
+        braces    = [PP.spaceCat(ctx.stylise(prefix, TokenType.Function), PP.lbrace), PP.rbrace];
     }
     // FIXME: Detect more containers
     else {
@@ -269,6 +286,10 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
                     PP.punctuate(
                         PP.comma, elems)))),
         braces[1]);
+}
+
+function inspectNothing(_val: any, _ctx: Context): PP.Doc[] {
+    return [];
 }
 
 function inspectArray(arr: any[], ctx: Context): PP.Doc[] {
@@ -502,7 +523,7 @@ function getPrototypeProperties(obj: any, ctx: Context): [PropertyKey, PropertyD
     return props;
 }
 
-function mkPrefix(ctorName: string|null, tag: string|null, fallback: string, size?: number): PP.Doc {
+function mkContainerPrefix(ctorName: string|null, tag: string|null, fallback: string, size?: number): PP.Doc {
     const sizeStr = size != null ? `(${size})` : "";
 
     if (ctorName != null) {
@@ -521,6 +542,73 @@ function mkPrefix(ctorName: string|null, tag: string|null, fallback: string, siz
             return PP.text(`[${fallback}${sizeStr}]`);
         }
     }
+}
+
+function mkFunctionPrefix(func: Function, ctorName: string|null, tag: string|null): PP.Doc {
+    let stringified = Function.prototype.toString.call(func);
+    if (/^class\s+/.test(stringified)) {
+        // Gee... is this the only way to test if a function is actually a
+        // class constructor? Seriously?
+        return mkClassPrefix(func, ctorName, tag);
+    }
+    else {
+        // We need to reconstruct the exact type of function, and there
+        // seems to be no better ways than this. LOL.
+        const mAsync  = stringified.match(/^async\s+(.+)$/);
+        const isAsync = mAsync != null;
+        if (mAsync) {
+            stringified = mAsync[1]!;
+        }
+        const isGenerator = /^function\*\s+/.test(stringified);
+        const typeName    =
+            (isAsync     ? "Async"     : "") +
+            (isGenerator ? "Generator" : "") +
+            "Function";
+
+        let prefix = PP.brackets(
+            PP.beside(
+                PP.text(typeName),
+                func.name != "" ? PP.text(`: ${func.name}`) : PP.text(" (anonymous)")));
+
+        if (ctorName == null) {
+            prefix = PP.spaceCat(prefix, PP.text("(null prototype)"));
+        }
+        else if (ctorName != typeName) {
+            prefix = PP.spaceCat(prefix, PP.text(ctorName));
+        }
+
+        if (tag != null && tag != ctorName) {
+            prefix = PP.spaceCat(prefix, PP.brackets(PP.text(tag)));
+        }
+
+        return prefix;
+    }
+}
+
+function mkClassPrefix(func: Function, ctorName: string|null, tag: string|null): PP.Doc {
+    let prefix = PP.spaceCat(
+        PP.text("class"),
+        func.name != "" ? PP.text(func.name) : PP.text("(anonymous)"));
+
+    if (ctorName != null && ctorName != "Function") {
+        prefix = PP.spaceCat(prefix, PP.brackets(PP.text(ctorName)));
+    }
+
+    if (tag != null && tag != ctorName) {
+        prefix = PP.spaceCat(prefix, PP.brackets(PP.text(tag)));
+    }
+
+    if (ctorName != null) {
+        const proto = Object.getPrototypeOf(func);
+        if (proto && proto.name) {
+            prefix = PP.spaceCat(prefix, PP.text("extends ${proto.name}"));
+        }
+    }
+    else {
+        prefix = PP.spaceCat(prefix, PP.text("extends (null constructor)"));
+    }
+
+    return PP.brackets(prefix);
 }
 
 function isIndex(key: PropertyKey): boolean {
