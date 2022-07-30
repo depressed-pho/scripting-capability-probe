@@ -4,7 +4,7 @@ export interface InspectOptions {
     indentationWidth?: number,
     showHidden?: boolean,
     depth?: number,
-    colors?: boolean,
+    colors?: boolean | ((token: PP.Doc, type: TokenType) => PP.Doc),
     maxArrayLength?: number,
     maxStringLength?: number,
     breakLength?: number,
@@ -26,7 +26,7 @@ const defaultOpts: Required<InspectOptions> = {
     getters: false
 };
 
-enum TokenType {
+export enum TokenType {
     BigInt,
     Boolean,
     Date,
@@ -81,7 +81,9 @@ export function inspect(obj: any, opts: InspectOptions = {}): string {
     const ctx: Context = {
         opts:           {...defaultOpts, ...opts},
         propFilter:     opts.showHidden ? pAllProperties : pOnlyEnumerable,
-        stylise:        opts.colors ? styliseNoColor : styliseWithColor,
+        stylise:        typeof opts.colors === "function" ? opts.colors
+                        : opts.colors                     ? styliseWithColour
+                        :                                   styliseNoColour,
         currentDepth:   0,
         seen:           new Set<any>(),
         circular:       new Map<any, number>()
@@ -89,17 +91,32 @@ export function inspect(obj: any, opts: InspectOptions = {}): string {
     const doc  = inspectValue(obj, ctx);
     const sDoc = opts.compact
         ? PP.renderCompact(doc)
-        : PP.renderSmart(1.0, ctx.opts.breakLength, doc);
+        : PP.renderSmart(0.9, ctx.opts.breakLength, doc);
     return PP.displayS(sDoc);
 }
 
-function styliseNoColor(token: PP.Doc, _type: TokenType): PP.Doc {
+function styliseNoColour(token: PP.Doc, _type: TokenType): PP.Doc {
     return token;
 }
 
-function styliseWithColor(token: PP.Doc, type: TokenType): PP.Doc {
-    // FIXME: Implement this properly.
-    return styliseNoColor(token, type);
+const defaultStyles = new Map<TokenType, (token: PP.Doc) => PP.Doc>([
+    [TokenType.BigInt   , PP.yellow     ],
+    [TokenType.Boolean  , PP.yellow     ],
+    [TokenType.Date     , PP.lightPurple],
+    [TokenType.Function , PP.gold       ],
+    [TokenType.Name     , (d) => d      ], // Don't style them.
+    [TokenType.Null     , PP.bold       ],
+    [TokenType.Number   , PP.yellow     ],
+    [TokenType.RegExp   , PP.aqua       ],
+    [TokenType.Special  , PP.gray       ],
+    [TokenType.String   , PP.green      ],
+    [TokenType.Symbol   , PP.green      ],
+    [TokenType.Undefined, PP.gray       ],
+    [TokenType.Unknown  , PP.italicise  ]
+]);
+function styliseWithColour(token: PP.Doc, type: TokenType): PP.Doc {
+    const f = defaultStyles.get(type);
+    return f ? f(token) : PP.italicise(token);
 }
 
 function pAllProperties(_desc: PropertyDescriptor): boolean {

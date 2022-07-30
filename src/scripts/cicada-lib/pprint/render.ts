@@ -78,7 +78,7 @@ export function renderPretty(ribbonFrac: number, width: number, d: Doc): SimpleD
  * consider this python-ish pseudocode: `fun(fun(fun(fun(fun([abcdefg,
  * abcdefg])))))`. If we put a softbreak (+ nesting 2) after each open
  * parenthesis, and align the elements of the list to match the opening
- * brackets, this will render with @renderPretty@ and a page width of 20
+ * brackets, this will render with `renderPretty` and a page width of 20
  * as:
  *
  * ``
@@ -89,7 +89,7 @@ export function renderPretty(ribbonFrac: number, width: number, d: Doc): SimpleD
  *   )))))             |
  * ``
  *
- * Where the 20c. boundary has been marked with |.  Because {@link
+ * Where the 20c. boundary has been marked with |. Because {@link
  * renderPretty} only uses one-line lookahead, it sees that the first line
  * fits, and is stuck putting the second and third lines after the 20-c
  * mark. In contrast, `renderSmart` will continue to check that the
@@ -196,7 +196,7 @@ function renderFits(fits: (p: number, m: number, w: number, sd: SimpleDoc) => bo
         underline:     false,
         italicise:     false
     };
-    return sFormat([Fmt.reset], best(0, 0, initialFmt, dCons(0, d, dNil)));
+    return best(0, 0, initialFmt, dCons(0, d, dNil));
 }
 
 // fits1 does 1 line lookahead.

@@ -7,6 +7,7 @@ import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "../cicada-lib/player"
 
 import { Thread } from "../cicada-lib/thread";
 import { console } from "../cicada-lib/console";
+import { inspect } from "../cicada-lib/inspect";
 
 world.on("playerJoin", (ev: PlayerJoinEvent) => {
     const player = ev.player;
@@ -14,8 +15,10 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
 
     //player.runCommand(
     //    `tellraw @s {"rawtext": [{"text": "${player.name} joined the world."}]}`);
-    console.error(new Number(67));
-    console.error({a: 1, b: 2});
+    let tmp = inspect(console, {colors: true, showHidden: true});
+    tmp = JSON.stringify(tmp);
+    player.raw.runCommand(
+        `tellraw @s {"rawtext": [{"text": ${tmp}}]}`);
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */
