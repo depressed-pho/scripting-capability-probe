@@ -319,9 +319,12 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
     }
     else if (obj instanceof Error) {
-        const prefix = mkErrorPrefix(obj, ctorName, tag);
+        const prefix = mkErrorPrefix(obj, ctorName, tag, ctx);
         const base   = PP.nest(ctx.opts.indentationWidth, prefix);
-        props = getOwnProperties(obj, ctx);
+        // These values are already included in the prefix. Hide them by
+        // default.
+        const dupes  = new Set<PropertyKey>(["name", "message", "stack"]);
+        props = getOwnProperties(obj, ctx, key => ctx.opts.showHidden || !dupes.has(key));
 
         // Print .cause even if it's not enumerable.
         if ("cause" in obj && !props.some(([key, ]) => key == "cause")) {
@@ -820,7 +823,10 @@ function mkDatePrefix(ctorName: string|null, tag: string|null): PP.Doc {
     return prefix;
 }
 
-function mkErrorPrefix(err: Error, ctorName: string|null, tag: string|null): PP.Doc {
+function mkErrorPrefix(err: Error,
+                       ctorName: string|null,
+                       tag: string|null,
+                       ctx: Context): PP.Doc {
     const name =
           err.name != null ? String(err.name)
         : ctorName != null ? ctorName
@@ -839,14 +845,19 @@ function mkErrorPrefix(err: Error, ctorName: string|null, tag: string|null): PP.
     else {
         let taggedName = name;
         if (ctorName != null && ctorName != name) {
-            taggedName += ` [${ctorName}]`;
+            // It's not a good idea to show the name of the constructor by
+            // default, because the whole point of overwriting .name is to
+            // clobber it.
+            if (ctx.opts.showHidden) {
+                taggedName += ` [${ctorName}]`;
+            }
         }
         if (tag != null && tag != ctorName) {
             taggedName += ` [${tag}]`;
         }
         stack =
-            `${taggedName}: ${message}` +
-            (stack != "" ? "\n" + stack : "");
+            (message != "" ? `${taggedName}: ${message}` : taggedName) +
+            (stack   != "" ? "\n" + stack                : ""        );
     }
 
     // Remove potential indentations of the stacktrace, since we do it in

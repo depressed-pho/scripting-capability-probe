@@ -6,6 +6,7 @@
  */
 import { formatWithOptions, stringify } from "./format";
 import { InspectOptions, inspect } from "./inspect";
+import { Timer } from "./timer";
 import * as PP from "./pprint";
 
 export enum Severity {
@@ -34,6 +35,9 @@ class Console {
 
     // Used for console.group().
     #currentGroupDepth: number = 0;
+
+    // Used for console.time().
+    #timers = new Map<string, Timer>();
 
     get #inspectOpts(): InspectOptions {
         return {
@@ -99,22 +103,83 @@ class Console {
     }
 
     public group(label?: string): void {
+        if (label != null) {
+            this.log(label);
+        }
         this.#currentGroupDepth++;
     }
 
-    // FIXME: more methods
+    public groupCollapsed(label?: string): void {
+        this.group(label); // We can't collapse anything of course.
+    }
+
+    public groupEnd(): void {
+        if (this.#currentGroupDepth > 0) {
+            this.#currentGroupDepth--;
+        }
+    }
+
+    public info(...args: any[]): void {
+        this.#log(Severity.Info, ...args);
+    }
 
     public log(...args: any[]): void {
         this.#log(Severity.Log, ...args);
     }
 
+    public table(obj: any, _columns: PropertyKey[]): void {
+        // It is way too hard to do this properly on CLI. Just redirect to
+        // .log() and hope nobody will rely on this.
+        this.log(obj);
+    }
+
+    public time(label: string = "default"): void {
+        if (this.#timers.has(label)) {
+            this.warn(`${label}: timer restarted`);
+        }
+        this.#timers.set(label, new Timer());
+    }
+
+    public timeLog(label: string = "default"): void {
+        const timer = this.#timers.get(label);
+        if (timer) {
+            this.log(`${label}: ${timer}`);
+        }
+        else {
+            this.error(`${label}: timer does not exist`);
+        }
+    }
+
+    public timeEnd(label: string = "default"): void {
+        const timer = this.#timers.get(label);
+        if (timer) {
+            this.#timers.delete(label);
+            this.log(`${label}: ${timer} - timer ended`);
+        }
+        else {
+            this.error(`${label}: timer does not exist`);
+        }
+    }
+
+    public trace(...args: any[]): void {
+        const msg = args.length > 0 ? this.#format(...args) : "";
+        const err = new Error(msg);
+        err.name = "Trace";
+        this.log(err);
+    }
+
+    public warn(...args: any[]): void {
+        this.#log(Severity.Warning, ...args);
+    }
+
     #log(sev: Severity, ...args: any[]): void {
         if (sev >= this.logLevel) {
-            const func = sev == Severity.Error ? console.error : console.warn;
+            const func   = sev == Severity.Error ? console.error : console.warn;
+            const indent = " ".repeat(this.#currentGroupDepth * this.indentationWidth);
             func.call(
                 console,
                 this.#severityToString(sev) + this.#timestamp() + ":",
-                this.#format(...args));
+                indent + this.#format(...args));
         }
     }
 

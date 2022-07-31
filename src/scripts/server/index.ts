@@ -18,6 +18,7 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
     //console.error(console);
     let tmp: any = {c: console};
     tmp.tmp = tmp;
+    console.trace({a: 1});
     //console.log("%O", globalThis);
     //console.log(Object(Symbol("foo")));
     //console.log(tmp);
@@ -49,6 +50,7 @@ world.on("itemUse", async (ev: ItemUseEvent) => {
              * minecraft:written_book, but the API doesn't (yet) provide a
              * component for the contents of a book. So we have no choice
              * but to just dump it to the content log. */
+            console.time("FIXME");
             session.probingThread = new Thread(
                 async function* () {
                     while (true) {
@@ -56,7 +58,7 @@ world.on("itemUse", async (ev: ItemUseEvent) => {
                         if (isCanceled) {
                             pl.raw.runCommand(
                                 `titleraw @s actionbar {"rawtext": [{"text": "."}]}`);
-                            throw Error("foo");
+                            console.timeEnd("FIXME");
                             break;
                         }
 
