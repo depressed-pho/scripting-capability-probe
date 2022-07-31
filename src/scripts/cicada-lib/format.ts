@@ -17,7 +17,7 @@ export function formatWithOptions(opts: InspectOptions, fmt: string, ...args: an
                         : matched;
                 case "O":
                     return args.length > 0
-                        ? inspect(args.shift(), {showHidden: true})
+                        ? inspect(args.shift(), {...opts, showHidden: true})
                         : matched;
                 case "d":
                 case "i":

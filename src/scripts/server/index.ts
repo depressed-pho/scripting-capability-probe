@@ -18,7 +18,8 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
     //console.error(console);
     let tmp: any = {c: console};
     tmp.tmp = tmp;
-    console.log("%O", tmp);
+    //console.log("%O", globalThis);
+    //console.log(Object(Symbol("foo")));
     //console.log(tmp);
 
     /* When a player joins the world, give them a Wand of Probing if they

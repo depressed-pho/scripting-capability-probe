@@ -5,29 +5,40 @@ import { Doc, SimpleDoc, STag, Tag, RestoreFormat, beside, empty, flatAlt,
 import { spaces } from "./combinators";
 import * as Fmt from "../fmt-code";
 
-/** Removes all colorisation and any other stylings from a document.
+// Most JS interpreters don't eliminate tail-calls. Even V8 doesn't. We
+// have to manually do it, or this module becomes a source of frequent
+// stack overflows. We also do lazy evaluation extensively so that
+// non-tail-calls don't overflow the stack.
+
+/** Remove all colorisation and any other stylings from a document.
  */
-export function plain(d: Doc): Doc {
-    switch (d.tag) {
-        case Tag.Fail:          return d;
-        case Tag.Empty:         return d;
-        case Tag.Text:          return d;
-        case Tag.Line:          return d;
-        case Tag.FlatAlt:       return flatAlt(plain(d.fst), plain(d.snd));
-        case Tag.Cat:           return beside(plain(d.fst), plain(d.snd));
-        case Tag.Nest:          return nest(d.level, plain(d.doc));
-        case Tag.Line:          return d;
-        case Tag.Union:         return union(lazy(() => plain(d.fst)), lazy(() => plain(d.snd)));
-        case Tag.Column:        return column(n => plain(d.f(n)));
-        case Tag.Columns:       return columns(n => plain(d.f(n)));
-        case Tag.Nesting:       return nesting(n => plain(d.f(n)));
-        case Tag.Colour:        return plain(d.doc);
-        case Tag.Obfuscate:     return plain(d.doc);
-        case Tag.Bold:          return plain(d.doc);
-        case Tag.Strikethrough: return plain(d.doc);
-        case Tag.Underline:     return plain(d.doc);
-        case Tag.Italicise:     return plain(d.doc);
-        case Tag.RestoreFormat: return empty;
+export function plain(doc: Doc): Doc {
+    plain: while (true) {
+        const d = doc;
+        switch (d.tag) {
+            case Tag.Fail:          return d;
+            case Tag.Empty:         return d;
+            case Tag.Text:          return d;
+            case Tag.Line:          return d;
+            case Tag.FlatAlt:       return flatAlt(lazy(() => plain(d.fst)),
+                                                   lazy(() => plain(d.snd)));
+            case Tag.Cat:           return beside(lazy(() => plain(d.fst)),
+                                                  lazy(() => plain(d.snd)));
+            case Tag.Nest:          return nest(d.level, lazy(() => plain(d.doc)));
+            case Tag.Line:          return d;
+            case Tag.Union:         return union(lazy(() => plain(d.fst)),
+                                                 lazy(() => plain(d.snd)));
+            case Tag.Column:        return column(n => plain(d.f(n)));
+            case Tag.Columns:       return columns(n => plain(d.f(n)));
+            case Tag.Nesting:       return nesting(n => plain(d.f(n)));
+            case Tag.Colour:        doc = d.doc; continue plain;
+            case Tag.Obfuscate:     doc = d.doc; continue plain;
+            case Tag.Bold:          doc = d.doc; continue plain;
+            case Tag.Strikethrough: doc = d.doc; continue plain;
+            case Tag.Underline:     doc = d.doc; continue plain;
+            case Tag.Italicise:     doc = d.doc; continue plain;
+            case Tag.RestoreFormat: return empty;
+        }
     }
 }
 
@@ -124,57 +135,59 @@ function renderFits(fits: (p: number, m: number, w: number, sd: SimpleDoc) => bo
     // k = current column
     // (ie. (k >= n) && (k - n == count of inserted characters)
     function best(n: number, k: number, rf: RestoreFormat, dlist: Docs): SimpleDoc {
-        switch (dlist.tag) {
-            case DocsTag.DNil:
-                return sEmpty;
+        best: while (true) {
+            switch (dlist.tag) {
+                case DocsTag.DNil:
+                    return sEmpty;
 
-            case DocsTag.DCons:
-                const i  = dlist.indent;
-                const d  = dlist.doc;
-                const ds = dlist.docs;
-                switch (d.tag) {
-                    case Tag.Fail:          return sFail;
-                    case Tag.Empty:         return best(n, k, rf, ds);
-                    case Tag.Text:          return sText(d.text, best(n, k + d.text.length, rf, ds));
-                    case Tag.Line:          return sLine(i, best(i, i, rf, ds));
-                    case Tag.FlatAlt:       return best(n, k, rf, dCons(i, d.fst, ds));
-                    case Tag.Cat:           return best(n, k, rf, dCons(i, d.fst, dCons(i, d.snd, ds)));
-                    case Tag.Nest:          return best(n, k, rf, dCons(i + d.level, d.doc, ds));
-                    case Tag.Union:         return nicest(n, k,
-                                                          lazy(() => best(n, k, rf, dCons(i, d.fst, ds))),
-                                                          lazy(() => best(n, k, rf, dCons(i, d.snd, ds))));
-                    case Tag.Column:        return best(n, k, rf, dCons(i, d.f(k), ds));
-                    case Tag.Columns:       return best(n, k, rf, dCons(i, d.f(w), ds));
-                    case Tag.Nesting:       return best(n, k, rf, dCons(i, d.f(i), ds));
-                    case Tag.Colour:        return sFormat([Fmt.setColour(d.colour)],
-                                                           best(n, k, {...rf, colour: d.colour},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.Obfuscate:     return sFormat([Fmt.obfuscate],
-                                                           best(n, k, {...rf, obfuscate: true},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.Bold:          return sFormat([Fmt.bold],
-                                                           best(n, k, {...rf, bold: true},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.Strikethrough: return sFormat([Fmt.strikethrough],
-                                                           best(n, k, {...rf, strikethrough: true},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.Underline:     return sFormat([Fmt.underline],
-                                                           best(n, k, {...rf, underline: true},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.Italicise:     return sFormat([Fmt.italicise],
-                                                           best(n, k, {...rf, italicise: true},
-                                                                dCons(i, d.doc, dCons(i, rf, ds))));
-                    case Tag.RestoreFormat:
-                        return sFormat(
-                            [ Fmt.reset,
-                              ...(d.colour != null ? [Fmt.setColour(d.colour)] : []),
-                              ...(d.obfuscate      ? [Fmt.obfuscate          ] : []),
-                              ...(d.bold           ? [Fmt.bold               ] : []),
-                              ...(d.strikethrough  ? [Fmt.strikethrough      ] : []),
-                              ...(d.underline      ? [Fmt.underline          ] : []),
-                              ...(d.italicise      ? [Fmt.italicise          ] : []) ],
-                            best(n, k, d, ds));
-                }
+                case DocsTag.DCons:
+                    const i  = dlist.indent;
+                    const d  = dlist.doc;
+                    const ds = dlist.docs;
+                    switch (d.tag) {
+                        case Tag.Fail:          return sFail;
+                        case Tag.Empty:         dlist = ds; continue best;
+                        case Tag.Text:          return sText(d.text, lazy(() => best(n, k + d.text.length, rf, ds)));
+                        case Tag.Line:          return sLine(i, lazy(() => best(i, i, rf, ds)));
+                        case Tag.FlatAlt:       dlist = dCons(i, d.fst, ds);                  continue best;
+                        case Tag.Cat:           dlist = dCons(i, d.fst, dCons(i, d.snd, ds)); continue best;
+                        case Tag.Nest:          dlist = dCons(i + d.level, d.doc, ds);        continue best;
+                        case Tag.Union:         return nicest(n, k,
+                                                              lazy(() => best(n, k, rf, dCons(i, d.fst, ds))),
+                                                              lazy(() => best(n, k, rf, dCons(i, d.snd, ds))));
+                        case Tag.Column:        dlist = dCons(i, d.f(k), ds); continue best;
+                        case Tag.Columns:       dlist = dCons(i, d.f(w), ds); continue best;
+                        case Tag.Nesting:       dlist = dCons(i, d.f(i), ds); continue best;
+                        case Tag.Colour:        return sFormat([Fmt.setColour(d.colour)],
+                                                               lazy(() => best(n, k, {...rf, colour: d.colour},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.Obfuscate:     return sFormat([Fmt.obfuscate],
+                                                               lazy(() => best(n, k, {...rf, obfuscate: true},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.Bold:          return sFormat([Fmt.bold],
+                                                               lazy(() => best(n, k, {...rf, bold: true},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.Strikethrough: return sFormat([Fmt.strikethrough],
+                                                               lazy(() => best(n, k, {...rf, strikethrough: true},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.Underline:     return sFormat([Fmt.underline],
+                                                               lazy(() => best(n, k, {...rf, underline: true},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.Italicise:     return sFormat([Fmt.italicise],
+                                                               lazy(() => best(n, k, {...rf, italicise: true},
+                                                                               dCons(i, d.doc, dCons(i, rf, ds)))));
+                        case Tag.RestoreFormat:
+                            return sFormat(
+                                [ Fmt.reset,
+                                  ...(d.colour != null ? [Fmt.setColour(d.colour)] : []),
+                                  ...(d.obfuscate      ? [Fmt.obfuscate          ] : []),
+                                  ...(d.bold           ? [Fmt.bold               ] : []),
+                                  ...(d.strikethrough  ? [Fmt.strikethrough      ] : []),
+                                  ...(d.underline      ? [Fmt.underline          ] : []),
+                                  ...(d.italicise      ? [Fmt.italicise          ] : []) ],
+                                lazy(() => best(n, k, d, ds)));
+                    }
+            }
         }
     }
 
@@ -201,16 +214,23 @@ function renderFits(fits: (p: number, m: number, w: number, sd: SimpleDoc) => bo
 
 // fits1 does 1 line lookahead.
 function fits1(p: number, m: number, w: number, sd: SimpleDoc): boolean {
-    if (w < 0) {
-        return false;
-    }
-    else {
-        switch (sd.tag) {
-            case STag.SFail:   return false;
-            case STag.SEmpty:  return true;
-            case STag.SText:   return fits1(p, m, w - sd.text.length, sd.succ);
-            case STag.SLine:   return true;
-            case STag.SFormat: return fits1(p, m, w, sd.content);
+    fits1: while (true) {
+        if (w < 0) {
+            return false;
+        }
+        else {
+            switch (sd.tag) {
+                case STag.SFail:   return false;
+                case STag.SEmpty:  return true;
+                case STag.SText:
+                    w  = w - sd.text.length;
+                    sd = sd.succ;
+                    continue fits1;
+                case STag.SLine:   return true;
+                case STag.SFormat:
+                    sd = sd.content;
+                    continue fits1;
+            }
         }
     }
 }
@@ -228,18 +248,31 @@ function fits1(p: number, m: number, w: number, sd: SimpleDoc): boolean {
 // m = minimum nesting level to fit in
 // w = the width in which to fit the first line
 function fitsR(p: number, m: number, w: number, sd: SimpleDoc): boolean {
-    if (w < 0) {
-        return false;
-    }
-    else {
-        switch (sd.tag) {
-            case STag.SFail:   return false;
-            case STag.SEmpty:  return true;
-            case STag.SText:   return fitsR(p, m, w - sd.text.length, sd.succ);
-            case STag.SLine:   return m < sd.indent
-                                    ? fitsR(p, m, p - sd.indent, sd.content)
-                                    : true;
-            case STag.SFormat: return fits1(p, m, w, sd.content);
+    fitsR: while (true) {
+        if (w < 0) {
+            return false;
+        }
+        else {
+            switch (sd.tag) {
+                case STag.SFail:   return false;
+                case STag.SEmpty:  return true;
+                case STag.SText:
+                    w  = w - sd.text.length;
+                    sd = sd.succ;
+                    continue fitsR;
+                case STag.SLine:
+                    if (m < sd.indent) {
+                        w  = p - sd.indent;
+                        sd = sd.content;
+                        continue fitsR;
+                    }
+                    else {
+                        return true;
+                    }
+                case STag.SFormat:
+                    sd = sd.content;
+                    continue fitsR;
+            }
         }
     }
 }
@@ -254,31 +287,33 @@ function fitsR(p: number, m: number, w: number, sd: SimpleDoc): boolean {
  */
 export function renderCompact(x: Doc): SimpleDoc {
     function scan(k: number, docs: Doc[]): SimpleDoc {
-        if (docs.length == 0) {
-            return sEmpty;
-        }
-        else {
-            const d  = docs[0]!;
-            const ds = docs.slice(1);
-            switch (d.tag) {
-                case Tag.Fail:          return sFail;
-                case Tag.Empty:         return scan(k, ds);
-                case Tag.Text:          return sText(d.text, scan(k + d.text.length, ds));
-                case Tag.FlatAlt:       return scan(k, [d.fst, ...ds]);
-                case Tag.Line:          return sLine(0, scan(0, ds));
-                case Tag.Cat:           return scan(k, [d.fst, d.snd, ...ds]);
-                case Tag.Nest:          return scan(k, [d.doc, ...ds]);
-                case Tag.Union:         return scan(k, [d.snd, ...ds]);
-                case Tag.Column:        return scan(k, [d.f(k), ...ds]);
-                case Tag.Columns:       return scan(k, [d.f(null), ...ds]);
-                case Tag.Nesting:       return scan(k, [d.f(0), ...ds]);
-                case Tag.Colour:        return scan(k, [d.doc, ...ds]);
-                case Tag.Obfuscate:     return scan(k, [d.doc, ...ds]);
-                case Tag.Bold:          return scan(k, [d.doc, ...ds]);
-                case Tag.Strikethrough: return scan(k, [d.doc, ...ds]);
-                case Tag.Underline:     return scan(k, [d.doc, ...ds]);
-                case Tag.Italicise:     return scan(k, [d.doc, ...ds]);
-                case Tag.RestoreFormat: return scan(k, ds);
+        scan: while (true) {
+            if (docs.length == 0) {
+                return sEmpty;
+            }
+            else {
+                const d  = docs[0]!;
+                const ds = docs.slice(1);
+                switch (d.tag) {
+                    case Tag.Fail:          return sFail;
+                    case Tag.Empty:         docs = ds; continue scan;
+                    case Tag.Text:          return sText(d.text, lazy(() => scan(k + d.text.length, ds)));
+                    case Tag.FlatAlt:       docs = [d.fst, ...ds]; continue scan;
+                    case Tag.Line:          return sLine(0, lazy(() => scan(0, ds)));
+                    case Tag.Cat:           docs = [d.fst, d.snd, ...ds]; continue scan;
+                    case Tag.Nest:          docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Union:         docs = [d.snd, ...ds];        continue scan;
+                    case Tag.Column:        docs = [d.f(k), ...ds];       continue scan;
+                    case Tag.Columns:       docs = [d.f(null), ...ds];    continue scan;
+                    case Tag.Nesting:       docs = [d.f(0), ...ds];       continue scan;
+                    case Tag.Colour:        docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Obfuscate:     docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Bold:          docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Strikethrough: docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Underline:     docs = [d.doc, ...ds];        continue scan;
+                    case Tag.Italicise:     docs = [d.doc, ...ds];        continue scan;
+                    case Tag.RestoreFormat: docs = ds;                    continue scan;
+                }
             }
         }
     }
@@ -294,14 +329,23 @@ export function renderCompact(x: Doc): SimpleDoc {
  * ``
  */
 export function displayS(d: SimpleDoc): string {
-    function scan(d: SimpleDoc, s: string): string {
+    let s = "";
+    displayS: while (true) {
         switch (d.tag) {
-            case STag.SFail:   throw Error("SFail can not appear uncaught in a rendered SimpleDoc");
-            case STag.SEmpty:  return s;
-            case STag.SText:   return scan(d.succ, s + d.text);
-            case STag.SLine:   return scan(d.content, s + "\n" + spaces(d.indent));
-            case STag.SFormat: return scan(d.content, s + Fmt.toString(d.codes));
+            case STag.SFail:  throw Error("SFail can not appear uncaught in a rendered SimpleDoc");
+            case STag.SEmpty: return s;
+            case STag.SText:
+                s += d.text;
+                d =  d.succ;
+                continue displayS;
+            case STag.SLine:
+                s += "\n" + spaces(d.indent);
+                d  = d.content;
+                continue displayS;
+            case STag.SFormat:
+                s += Fmt.toString(d.codes);
+                d  = d.content;
+                continue displayS;
         }
     }
-    return scan(d, "");
 }

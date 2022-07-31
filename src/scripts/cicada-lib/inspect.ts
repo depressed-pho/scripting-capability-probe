@@ -79,6 +79,30 @@ const boxedPrimConstructors: Set<Function> = (() => {
               .map(name => (globalThis as any)[name] as Function));
 })();
 
+/* Object.hasOwn() is not available everywhere. This is an alternative
+ * implementation. */
+function hasOwn(obj: any, key: PropertyKey): boolean {
+    return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+/* Object.prototype.propertyIsEnumerable() may be overridden by
+ * subclasses. Invoke the original method. */
+function propertyIsEnumerable(obj: any, key: PropertyKey): boolean {
+    return Object.prototype.propertyIsEnumerable.call(obj, key);
+}
+
+/* Object.prototype.valueOf() may be overridden by subclasses. Invoke the
+ * original method. This function throws if obj isn't a boxed primitive. */
+function valueOf(ctor: Function, obj: any): any {
+    const prim = ctor.prototype.valueOf.call(obj);
+    if (typeof "prim" === "object") {
+        throw Error("valueOf() applied to a non-primitive wrapper");
+    }
+    else {
+        return prim;
+    }
+}
+
 export function inspect(obj: any, opts: InspectOptions = {}): string {
     const ctx: Context = {
         opts:           {...defaultOpts, ...opts},
@@ -212,8 +236,8 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     // Only list the tag in case it's non-enumerable / not an own property,
     // otherwise we'd print this twice.
     const tag      = ctx.opts.showHidden
-        ? (obj.hasOwnProperty(Symbol.toStringTag)       ? undefined : obj[Symbol.toStringTag])
-        : (obj.propertyIsEnumerable(Symbol.toStringTag) ? undefined : obj[Symbol.toStringTag]);
+        ? (hasOwn              (obj, Symbol.toStringTag) ? undefined : obj[Symbol.toStringTag])
+        : (propertyIsEnumerable(obj, Symbol.toStringTag) ? undefined : obj[Symbol.toStringTag]);
 
     // If we have recursed too many times, only show the name of
     // constructor and exit.
@@ -300,15 +324,16 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         props = getOwnProperties(obj, ctx);
 
         // Print .cause even if it's not enumerable.
-        if (obj.hasOwnProperty("cause") && !props.some(([key, ]) => key == "cause")) {
-            props.push(
-                ["cause", Object.getOwnPropertyDescriptor(obj, "cause")!]);
+        if ("cause" in obj && !props.some(([key, ]) => key == "cause")) {
+            props.push(["cause", {value: obj.cause}]);
         }
 
         // Print .errors in AggregateError even if it's not enumerable.
-        if (obj.hasOwnProperty("errors") && !props.some(([key, ]) => key == "errors")) {
-            props.push(
-                ["errors", Object.getOwnPropertyDescriptor(obj, "errors")!]);
+        if ("errors" in obj &&
+            Array.isArray((obj as any).errors) &&
+            !props.some(([key, ]) => key == "errors")) {
+
+            props.push(["errors", {value: (obj as any).errors}]);
         }
 
         if (props.length == 0 && protoProps.length == 0) {
@@ -365,7 +390,7 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
     }
     else if (obj.constructor != null && boxedPrimConstructors.has(obj.constructor)) {
         const prefix = mkBoxedPrimPrefix(ctorName!, tag);
-        const base   = PP.spaceCat(prefix, inspectValue(obj.valueOf(), ctx));
+        const base   = PP.spaceCat(prefix, inspectValue(valueOf(obj.constructor, obj), ctx));
         props     = getOwnProperties(obj, ctx);
         if (props.length == 0 && protoProps.length == 0) {
             // Special case: the boxed primitive has no extra properties.
