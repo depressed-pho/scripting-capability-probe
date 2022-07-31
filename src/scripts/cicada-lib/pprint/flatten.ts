@@ -1,3 +1,4 @@
+import { lazy } from "../lazy";
 import { Doc, Tag, beside, nest, fail, column, columns,
          nesting, union } from "./primitives";
 import { colour } from "./colours"
@@ -11,7 +12,7 @@ import { obfuscate, deobfuscate, bold, debold, strikethrough,
  * page. Otherwise, the document `d` is rendered without any changes.
  */
 export function group(d: Doc): Doc {
-    return union(() => flatten(d), d);
+    return union(lazy(() => flatten(d)), d);
 }
 
 export function flatten(d: Doc): Doc {

@@ -1,11 +1,11 @@
+import { lazy } from "../lazy";
 import { Doc, SimpleDoc, STag, Tag, RestoreFormat, beside, empty, flatAlt,
          nest, union, column, columns, nesting, sFail, sEmpty, sText, sLine,
          sFormat } from "./primitives";
 import { spaces } from "./combinators";
 import * as Fmt from "../fmt-code";
 
-/** Removes all colorisation, emboldening and underlining from a
- * document.
+/** Removes all colorisation and any other stylings from a document.
  */
 export function plain(d: Doc): Doc {
     switch (d.tag) {
@@ -17,7 +17,7 @@ export function plain(d: Doc): Doc {
         case Tag.Cat:           return beside(plain(d.fst), plain(d.snd));
         case Tag.Nest:          return nest(d.level, plain(d.doc));
         case Tag.Line:          return d;
-        case Tag.Union:         return union(() => plain(d.fst), () => plain(d.snd));
+        case Tag.Union:         return union(lazy(() => plain(d.fst)), lazy(() => plain(d.snd)));
         case Tag.Column:        return column(n => plain(d.f(n)));
         case Tag.Columns:       return columns(n => plain(d.f(n)));
         case Tag.Nesting:       return nesting(n => plain(d.f(n)));
@@ -141,8 +141,8 @@ function renderFits(fits: (p: number, m: number, w: number, sd: SimpleDoc) => bo
                     case Tag.Cat:           return best(n, k, rf, dCons(i, d.fst, dCons(i, d.snd, ds)));
                     case Tag.Nest:          return best(n, k, rf, dCons(i + d.level, d.doc, ds));
                     case Tag.Union:         return nicest(n, k,
-                                                          best(n, k, rf, dCons(i, d.fst, ds)),
-                                                          best(n, k, rf, dCons(i, d.snd, ds)));
+                                                          lazy(() => best(n, k, rf, dCons(i, d.fst, ds))),
+                                                          lazy(() => best(n, k, rf, dCons(i, d.snd, ds))));
                     case Tag.Column:        return best(n, k, rf, dCons(i, d.f(k), ds));
                     case Tag.Columns:       return best(n, k, rf, dCons(i, d.f(w), ds));
                     case Tag.Nesting:       return best(n, k, rf, dCons(i, d.f(i), ds));
@@ -236,7 +236,9 @@ function fitsR(p: number, m: number, w: number, sd: SimpleDoc): boolean {
             case STag.SFail:   return false;
             case STag.SEmpty:  return true;
             case STag.SText:   return fitsR(p, m, w - sd.text.length, sd.succ);
-            case STag.SLine:   return m < sd.indent ? fitsR(p, m, p - sd.indent, sd.content) : true;
+            case STag.SLine:   return m < sd.indent
+                                    ? fitsR(p, m, p - sd.indent, sd.content)
+                                    : true;
             case STag.SFormat: return fits1(p, m, w, sd.content);
         }
     }

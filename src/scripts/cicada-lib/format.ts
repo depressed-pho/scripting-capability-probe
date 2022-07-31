@@ -1,6 +1,10 @@
-import { inspect } from "./inspect";
+import { InspectOptions, inspect } from "./inspect";
 
 export function format(fmt: string, ...args: any[]): string {
+    return formatWithOptions({}, fmt, ...args);
+}
+
+export function formatWithOptions(opts: InspectOptions, fmt: string, ...args: any[]): string {
     const str = fmt.replaceAll(
         /%(%|[oO]|(?:([0-9]*)\.([0-9]*))?[di]|s|(?:([0-9]*)\.([0-9]*))?f)/g,
         (matched, subst, intWidth, intPrec, floatWidth, floatPrec) => {
@@ -52,14 +56,14 @@ export function format(fmt: string, ...args: any[]): string {
         });
     /* Any remaining arguments should be appended to the result. They
      * weren't consumed by the format string. */
-    return [str, ...(args.map(stringify))].join(" ");
+    return [str, ...(args.map(val => stringify(val, opts)))].join(" ");
 }
 
-export function stringify(val: any): string {
+export function stringify(val: any, opts: InspectOptions = {}): string {
     switch (typeof val) {
         case "string":
             return val;
         default:
-            return inspect(val);
+            return inspect(val, opts);
     }
 }

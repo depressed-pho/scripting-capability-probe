@@ -1,4 +1,3 @@
-import { defineLazyProperties } from "../lazy";
 import * as Fmt from "../fmt-code";
 
 export enum Tag {
@@ -322,9 +321,10 @@ export const fail: Doc = {
     tag: Tag.Fail
 };
 
-export function union(x: (() => Doc)|Doc, y: (() => Doc)|Doc): Doc {
-    const doc: any = {
-        tag: Tag.Union
+export function union(x: Doc, y: Doc): Doc {
+    return {
+        tag: Tag.Union,
+        fst: x,
+        snd: y
     };
-    return defineLazyProperties(doc, {fst: x, snd: y});
 }

@@ -23,7 +23,9 @@ const defaultOpts: Required<InspectOptions> = {
     breakLength: 80,
     compact: false,
     sorted: false,
-    getters: false
+    getters: true /* Ideally this should be false, but almost all the
+                   * objects coming from "mojang-minecraft" are native
+                   * objects with getter/setters. */
 };
 
 export enum TokenType {
@@ -418,15 +420,18 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
             braces[0]);
     }
 
-    return PP.softlineCat(
-        PP.nest(
-            ctx.opts.indentationWidth,
-            PP.softlineCat(
-                braces[0],
-                PP.fillSep(
-                    PP.punctuate(
-                        PP.comma, elems)))),
-        braces[1]);
+    // If the entire object fits the line, print it in a single
+    // line. Otherwise break lines for each element of the object.
+    return PP.group(
+        PP.lineCat(
+            PP.nest(
+                ctx.opts.indentationWidth,
+                PP.lineCat(
+                    braces[0],
+                    PP.vsep(
+                        PP.punctuate(
+                            PP.comma, elems)))),
+            braces[1]));
 }
 
 function inspectNothing(_val: any, _ctx: Context): PP.Doc[] {

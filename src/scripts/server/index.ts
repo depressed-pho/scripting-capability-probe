@@ -15,10 +15,11 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
 
     //player.runCommand(
     //    `tellraw @s {"rawtext": [{"text": "${player.name} joined the world."}]}`);
-    let tmp = inspect(console, {colors: true, showHidden: true});
-    tmp = JSON.stringify(tmp);
-    player.raw.runCommand(
-        `tellraw @s {"rawtext": [{"text": ${tmp}}]}`);
+    //console.error(console);
+    let tmp: any = {c: console};
+    tmp.tmp = tmp;
+    console.log("%O", tmp);
+    //console.log(tmp);
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */
