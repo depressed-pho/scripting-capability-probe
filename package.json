@@ -25,9 +25,11 @@
     "url": "https://github.com/depressed-pho/bedrock-capability-probe/issues"
   },
   "homepage": "https://github.com/depressed-pho/bedrock-capability-probe#readme",
+  "engines": {
+    "node": ">=14.9"
+  },
   "devDependencies": {
     "@types/mojang-minecraft": "^0.1.6",
-    "delete": "^1.1.0",
     "dotenv": "^16.0.1",
     "fancy-log": "^2.0.0",
     "gm": "^1.23.1",

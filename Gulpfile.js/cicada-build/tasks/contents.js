@@ -75,7 +75,7 @@ function transpileTypeScript(tsConfigPath) {
         true,
         tsConfigDefault,
         fs.existsSync(tsConfigPath)
-            ? requireUncached(path.resolve(process.cwd(), tsConfigPath))
+            ? requireUncached(path.resolve(tsConfigPath))
             : {});
     const tsProj = ts.createProject(tsConfig.compilerOptions);
 

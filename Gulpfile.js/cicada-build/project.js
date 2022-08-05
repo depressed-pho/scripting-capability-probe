@@ -1,6 +1,5 @@
 const merge = require("merge");
 const semver = require("semver");
-const process = require("node:process");
 const path = require("node:path");
 const { requireUncached } = require("./utils.js");
 
@@ -375,8 +374,8 @@ class Project {
     packs; // Pack[]
 
     constructor(pkgJsonPath, manifestSrcPath) {
-        const meta   = requireUncached(path.resolve(process.cwd(), pkgJsonPath));
-        const src    = requireUncached(path.resolve(process.cwd(), manifestSrcPath));
+        const meta   = requireUncached(path.resolve(pkgJsonPath));
+        const src    = requireUncached(path.resolve(manifestSrcPath));
         const srcDir = path.dirname(manifestSrcPath);
 
         this.name    = meta.name;

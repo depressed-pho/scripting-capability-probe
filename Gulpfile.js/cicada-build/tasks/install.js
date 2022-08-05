@@ -1,11 +1,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const process = require("node:process");
-const del = require("delete");
 const fancyLog = require("fancy-log");
-const { readdir, readFile } = require("node:fs/promises");
-const { pipeline } = require("node:stream");
+const { readdir, readFile, rename, rm } = require("node:fs/promises");
+const { pipeline } = require("node:stream/promises");
 const { src, dest } = require("gulp");
+const { overwrite } = require("../streams/overwrite.js");
 const { Project } = require("../project.js");
 require("dotenv").config();
 
@@ -36,7 +36,7 @@ exports.installIfPossible = async function installIfPossible() {
             // Now this is the most dangerous part. We have a root
             // directory where packs are installed. Before installing our
             // pack there, we must look for a pack that has the same UUID
-            // as ours, and delete it if it exists.
+            // as ours, and overwrite it if it exists.
             for (const dirent of await readdir(installRootPath, {withFileTypes: true})) {
                 if (dirent.isDirectory()) {
                     const packPath = path.resolve(installRootPath, dirent.name);
@@ -51,28 +51,28 @@ exports.installIfPossible = async function installIfPossible() {
                         typeof manifest.header      === "object" &&
                         typeof manifest.header.uuid === "string" &&
                         manifest.header.uuid        === pack.uuid) {
-                        fancyLog.info(`Uninstalling: ${packPath}`);
-                        await del.promise([packPath], {force: true});
+
+                        if (packPath != installPath) {
+                            fancyLog.info(`Renaming: ${packPath} -> ${installPath}`);
+                            await rename(packPath, installPath);
+                        }
                         break;
                     }
                 }
             }
 
-            // Copy everything from the staging directory.
+            // Copy everything from the staging directory, and remove any
+            // existing files that are missing from the staging
+            // directory. The reason why don't take the easiest path,
+            // removing everything and then copying files, is that the game
+            // directory is typically mounted via a slow link (except on
+            // Windows) and wasting the bandwidth incurs a huge performance
+            // penalty.
             fancyLog.info(`Installing: ${installPath}`);
-            await new Promise((resolve, reject) =>{
-                pipeline(
-                    src("**", {cwd: stagePath}),
-                    dest(installPath),
-                    err => {
-                        if (err) {
-                            reject(err);
-                        }
-                        else {
-                            resolve();
-                        }
-                    });
-            });
+            await pipeline(
+                src("**", {cwd: stagePath}),
+                overwrite(installPath)
+            );
         }
     }
 };

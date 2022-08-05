@@ -1,5 +1,5 @@
-const del = require("delete");
+const { rm } = require("node:fs/promises");
 
 exports.clean = async function clean () {
-    await del.promise(["dist"]);
+    await rm("dest", {force: true, recursive: true});
 };

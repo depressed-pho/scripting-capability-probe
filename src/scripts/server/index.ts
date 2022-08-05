@@ -1,27 +1,13 @@
 import { sessionManager } from "./player-session";
 import { world } from "../cicada-lib/world";
-import { Enchantment } from "../cicada-lib/enchantment";
 import { ItemUseEvent } from "../cicada-lib/entity";
 import { ItemStack } from "../cicada-lib/item-stack";
 import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "../cicada-lib/player";
-
-import { Thread } from "../cicada-lib/thread";
-import { console } from "../cicada-lib/console";
-import { inspect } from "../cicada-lib/inspect";
+import { ProbingThread } from "./probing-thread";
 
 world.on("playerJoin", (ev: PlayerJoinEvent) => {
     const player = ev.player;
     sessionManager.create(player.name);
-
-    //player.runCommand(
-    //    `tellraw @s {"rawtext": [{"text": "${player.name} joined the world."}]}`);
-    //console.error(console);
-    let tmp: any = {c: console};
-    tmp.tmp = tmp;
-    console.trace({a: 1});
-    //console.log("%O", globalThis);
-    //console.log(Object(Symbol("foo")));
-    //console.log(tmp);
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */
@@ -42,30 +28,12 @@ world.on("itemUse", async (ev: ItemUseEvent) => {
         const pl = ev.source;
         const session = sessionManager.get(ev.source.name);
         if (session.probingThread) {
-            await session.probingThread.cancel();
-            session.probingThread = null;
+            session.probingThread.cancel();
         }
         else {
-            /* We really want to produce the result of probing as a
-             * minecraft:written_book, but the API doesn't (yet) provide a
-             * component for the contents of a book. So we have no choice
-             * but to just dump it to the content log. */
-            console.time("FIXME");
-            session.probingThread = new Thread(
-                async function* () {
-                    while (true) {
-                        const isCanceled = yield;
-                        if (isCanceled) {
-                            pl.raw.runCommand(
-                                `titleraw @s actionbar {"rawtext": [{"text": "."}]}`);
-                            console.timeEnd("FIXME");
-                            break;
-                        }
-
-                        pl.raw.runCommand(
-                            `titleraw @s actionbar {"rawtext": [{"text": "thread"}]}`);
-                    }
-                });
+            session.probingThread = new ProbingThread(pl);
+            await session.probingThread.join();
+            session.probingThread = null;
         }
     }
 });
