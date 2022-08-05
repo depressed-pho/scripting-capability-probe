@@ -124,6 +124,22 @@ class Overwrite extends Writable {
             }
             this.#destTree.delete(absPath);
         }
+        else {
+            const parentPath = path.dirname(absPath);
+            if (!fs.existsSync(parentPath)) {
+                await this.#mkdir(parentPath);
+            }
+
+            if (vinyl.isDirectory()) {
+                await this.#mkdir(absPath);
+            }
+            else if (vinyl.isSymbolic()) {
+                await this.#symlink(vinyl.symlink, stNew.mode);
+            }
+            else {
+                await this.#writeFile(absPath, vinyl.contents, stNew.mode);
+            }
+        }
     }
 
     async #removeRemaining() {
@@ -146,7 +162,7 @@ class Overwrite extends Writable {
             fancyLog.info(`mkdir ${mode}. ${path}`);
         }
         if (!this.#opts.dryRun) {
-            await mkdir(path, {mode: mode});
+            await mkdir(path, {mode: mode, recursive: true});
         }
     }
 

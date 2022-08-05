@@ -402,6 +402,14 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         inspector = inspectNothing;
         braces    = [PP.spaceCat(base, PP.lbrace), PP.rbrace];
     }
+    else if (Object.prototype.toString.call(obj) === "[Object Arguments]") {
+        // This appears to be the only way to detect Arguments objects. We
+        // hate Object.prototype.toString, because it's so slow, but we
+        // have no other choices.
+        inspector = inspectArray;
+        braces    = [PP.spaceCat(PP.text("Arguments"), PP.lbracket), PP.rbracket];
+        props     = getOwnProperties(obj, ctx, key => !isIndex(key));
+    }
     else {
         const prefix = mkPlainObjectPrefix(ctorName, tag);
         inspector = inspectNothing;

@@ -1,4 +1,5 @@
 import { console } from "../cicada-lib/console";
+import { deepEqual } from "../cicada-lib/deep-equal";
 import { hasInstance } from "../cicada-lib/has-instance";
 import { inspect, InspectOptions } from "../cicada-lib/inspect";
 import { ThreadCancellationRequested } from "../cicada-lib/thread";
@@ -165,8 +166,8 @@ export function probe(title: string, worker: () => AsyncGenerator) {
 }
 
 // Chai.js-like expectation API.
-export function expect<T>(val: T): Expectation<T> {
-    return new Expectation<T>(val);
+export function expect(val: any): Expectation {
+    return new Expectation(val);
 }
 
 export class ExpectationFailed extends Error {
@@ -175,11 +176,15 @@ export class ExpectationFailed extends Error {
     }
 }
 
-export class Expectation<T> {
-    readonly #val: T;
+export class Expectation {
+    #val: any;
+    #deep: boolean;
+    #own: boolean;
 
-    public constructor(val: T) {
-        this.#val = val;
+    public constructor(val: any) {
+        this.#val  = val;
+        this.#deep = false;
+        this.#own  = false;
     }
 
     static #pretty(val: any): string {
@@ -208,18 +213,85 @@ export class Expectation<T> {
     public get still(): this { return this; }
     public get also():  this { return this; }
 
-    /** Strict equality (===) */
-    public equal(val: T, msg?: string): this {
-        if (this.#val === val) {
-            return this;
+    /** Make subsequent calls of {@link equal} test for deep equality as
+     * opposed to strict equality. */
+    public get deep(): this {
+        this.#deep = true;
+        return this;
+    }
+
+    /** Equivalent to {@link deep}. */
+    public get deeply(): this {
+        return this.deep;
+    }
+
+    /** Deep equality or strict equality (===) */
+    public equal(val: any, msg?: string): this {
+        if (this.#deep) {
+            if (deepEqual(this.#val, val)) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s isn't deeply equal to %s.",
+                                 Expectation.#pretty(this.#val),
+                                 Expectation.#pretty(val)));
+            }
         }
         else {
-            throw new ExpectationFailed(
-                msg != null
-                    ? msg
-                    : format("`%s === %s' is not fulfilled",
-                             Expectation.#pretty(this.#val),
-                             Expectation.#pretty(val)));
+            if (this.#val === val) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s isn't strictly equal to %s.",
+                                 Expectation.#pretty(this.#val),
+                                 Expectation.#pretty(val)));
+            }
+        }
+    }
+
+    /** Make subsequent calls of {@link property} search for only own properties
+     * of the value, ignoring their inherited ones. */
+    public get own(): this {
+        this.#own = true;
+        return this;
+    }
+
+    /** Existence of a property with optional value */
+    public property(key: PropertyKey, val?: any, msg?: string): this {
+        if (this.#own) {
+            if (!Object.prototype.hasOwnProperty.call(this.#val, key)) {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s does not have its own property %s",
+                                 Expectation.#pretty(this.#val),
+                                 Expectation.#pretty(key)));
+            }
+        }
+        else {
+            if (!(key in this.#val)) {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s does not have a property %s",
+                                 Expectation.#pretty(this.#val),
+                                 Expectation.#pretty(key)));
+            }
+        }
+
+        this.#val = this.#val[key];
+
+        if (arguments.length > 1) {
+            return this.equal(val, msg);
+        }
+        else {
+            return this;
         }
     }
 }

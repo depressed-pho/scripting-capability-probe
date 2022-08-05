@@ -71,7 +71,7 @@ exports.installIfPossible = async function installIfPossible() {
             fancyLog.info(`Installing: ${installPath}`);
             await pipeline(
                 src("**", {cwd: stagePath}),
-                overwrite(installPath)
+                overwrite(installPath, {verbose: false})
             );
         }
     }
