@@ -179,11 +179,13 @@ export class ExpectationFailed extends Error {
 export class Expectation {
     #val: any;
     #deep: boolean;
+    #not: boolean;
     #own: boolean;
 
     public constructor(val: any) {
         this.#val  = val;
         this.#deep = false;
+        this.#not  = false;
         this.#own  = false;
     }
 
@@ -213,6 +215,12 @@ export class Expectation {
     public get still(): this { return this; }
     public get also():  this { return this; }
 
+    /** Negate subsequent tests. */
+    public get not(): this {
+        this.#not = true;
+        return this;
+    }
+
     /** Make subsequent calls of {@link equal} test for deep equality as
      * opposed to strict equality. */
     public get deep(): this {
@@ -228,29 +236,59 @@ export class Expectation {
     /** Deep equality or strict equality (===) */
     public equal(val: any, msg?: string): this {
         if (this.#deep) {
-            if (deepEqual(this.#val, val)) {
-                return this;
+            if (this.#not) {
+                if (!deepEqual(this.#val, val)) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s is deeply equal to %s.",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(val)));
+                }
             }
             else {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s isn't deeply equal to %s.",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(val)));
+                if (deepEqual(this.#val, val)) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s isn't deeply equal to %s.",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(val)));
+                }
             }
         }
         else {
-            if (this.#val === val) {
-                return this;
+            if (this.#not) {
+                if (this.#val !== val) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s is strictly equal to %s.",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(val)));
+                }
             }
             else {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s isn't strictly equal to %s.",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(val)));
+                if (this.#val === val) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s isn't strictly equal to %s.",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(val)));
+                }
             }
         }
     }
@@ -262,26 +300,50 @@ export class Expectation {
         return this;
     }
 
-    /** Existence of a property with optional value */
+    /** Existence of a property with optional value. */
     public property(key: PropertyKey, val?: any, msg?: string): this {
         if (this.#own) {
-            if (!Object.prototype.hasOwnProperty.call(this.#val, key)) {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s does not have its own property %s",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(key)));
+            if (this.#not) {
+                if (Object.prototype.hasOwnProperty.call(this.#val, key)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s has its own property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
+            }
+            else {
+                if (!Object.prototype.hasOwnProperty.call(this.#val, key)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does not have its own property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
             }
         }
         else {
-            if (!(key in this.#val)) {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s does not have a property %s",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(key)));
+            if (this.#not) {
+                if (key in this.#val) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does not have a property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
+            }
+            else {
+                if (!(key in this.#val)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does not have a property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
             }
         }
 
@@ -292,6 +354,130 @@ export class Expectation {
         }
         else {
             return this;
+        }
+    }
+
+    /** Expectation of an exception by calling the value as a nullary
+     * function. */
+    public throw(): this;
+    public throw(errorCtor: Function): this;
+    public throw(errorMsg: string|RegExp): this;
+    public throw(errorCtor: Function, errorMsg: string|RegExp, msg?: string): this;
+    public throw(...args: any[]): this {
+        let errorCtor: Function|null = null;
+        let errorMsg: RegExp|null = null;
+        let msg: string|null = null;
+
+        function toRegExp(msg: string|RegExp): RegExp {
+            return typeof msg === "string"
+                ? new RegExp(msg)
+                : msg;
+        }
+
+        switch (args.length) {
+            case 0:
+                break;
+            case 1:
+                if (typeof args[0] === "function") {
+                    errorCtor = args[0];
+                }
+                else {
+                    errorMsg = toRegExp(args[1]);
+                }
+                break;
+            case 2:
+                errorCtor = args[0];
+                errorMsg  = toRegExp(args[1]);
+                break;
+            case 3:
+                errorCtor = args[0];
+                errorMsg  = toRegExp(args[1]);
+                msg       = args[2];
+                break;
+        }
+
+        if (typeof this.#val !== "function") {
+            throw new TypeError("The value is not a function");
+        }
+
+        let error: any;
+        try {
+            this.#val();
+        }
+        catch (e) {
+            error = e;
+        }
+
+        if (this.#not) {
+            if (error) {
+                if (errorCtor && error instanceof errorCtor) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format(
+                                "The function was expected not to throw an" +
+                                    " error of type %s but it did threw %s.",
+                                Expectation.#pretty(errorCtor),
+                                Expectation.#pretty(error)));
+                }
+                if (errorMsg && errorMsg.test(error.message)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format(
+                                "The function threw an error whose message" +
+                                    " matches %s: %s",
+                                Expectation.#pretty(errorMsg),
+                                Expectation.#pretty(error)));
+                }
+                if (!errorCtor && !errorMsg) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format(
+                                "The function was expected not to throw an"+
+                                    " error but it did threw %s.",
+                                Expectation.#pretty(error)));
+                }
+                this.#val = error;
+                return this;
+            }
+            else {
+                return this;
+            }
+        }
+        else {
+            if (error) {
+                if (errorCtor && !(error instanceof errorCtor)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format(
+                                "The function was expected to throw an error" +
+                                    " of type %s but actually threw %s.",
+                                Expectation.#pretty(errorCtor),
+                                Expectation.#pretty(error)));
+                }
+                if (errorMsg && !errorMsg.test(error.message)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format(
+                                "The function threw an error whose message" +
+                                    " doesn't match %s: %s",
+                                Expectation.#pretty(errorMsg),
+                                Expectation.#pretty(error)));
+                }
+                this.#val = error;
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : "The function was expected to throw an error " +
+                              "but it didn't");
+            }
         }
     }
 }

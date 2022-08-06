@@ -19,6 +19,28 @@ export default group("Syntax", [
                 f;
             `);
             expect(f(undefined, 3)).to.deeply.equal({a: 1, b: 3});
+        }),
+        probe("defaults can refer to previous params", async function* () {
+            const f = eval(`
+                function f(a, b = a) {
+                    return {a: a, b: b};
+                }
+                f;
+            `);
+            expect(f(5)).to.deeply.equal({a: 5, b: 5});
+        }),
+        probe("arguments object interaction", async function* () {
+            const f = eval(`
+                function f(a = "foo", b = "bar", c = "baz") {
+                    return Array.from(arguments);
+                }
+                f;
+            `);
+            expect(f(1, 2)).to.deeply.equal([1, 2]);
+        }),
+        probe("temporal dead zone", async function* () {
+            expect(() => eval(`function f(a=a) {} f()`)).to.throw();
+            expect(() => eval(`function f(a=b, b) {} f()`)).to.throw();
         })
     ])
 ]);
