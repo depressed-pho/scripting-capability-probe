@@ -1,33 +1,26 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const process = require("node:process");
-const through2 = require("through2");
 const jsonlint = require("jsonlint");
 const fancyLog = require("fancy-log");
 const gulpIf = require("gulp-if");
 const ts = require("gulp-typescript");
 const streamReadAll = require("stream-read-all");
 const merge = require("merge");
+const { Transform } = require("node:stream");
 const { parallel, src, dest } = require("gulp");
 const { Project } = require("../project.js");
 const { requireUncached } = require("../utils.js");
 
-function validateJSONBuffer(vinyl, enc, buf) /* null | Error */ {
-    /* THINKME: We should validate it against actual JSON schemata, not
-     * only its well-formedness. */
-    try {
-        jsonlint.parse(buf.toString(enc));
+class ValidateJSON extends Transform {
+    constructor() {
+        super({objectMode: true});
     }
-    catch (e) {
-        return Error(`${vinyl.path}: ${e.message}`);
-    }
-}
 
-function validateJSON() {
-    return through2.obj((vinyl, enc, cb) => {
+    _transform(vinyl, enc, cb) {
         if (path.extname(vinyl.path) == ".json") {
             if (vinyl.isBuffer()) {
-                const e = validateJSONBuffer(vinyl, enc, vinyl.contents);
+                const e = ValidateJSON.#validateJSONBuffer(vinyl, enc, vinyl.contents);
                 if (e) {
                     cb(e);
                 }
@@ -38,7 +31,7 @@ function validateJSON() {
             else if (vinyl.isStream()) {
                 streamReadAll(vinyl.contents.clone())
                     .then(buf => {
-                        const e = validateJSONBuffer(vinyl, buf);
+                        const e = ValidateJSON.#validateJSONBuffer(vinyl, buf);
                         if (e) {
                             cb(e);
                         }
@@ -55,7 +48,18 @@ function validateJSON() {
         else {
             cb(null, vinyl);
         }
-    });
+    }
+
+    static #validateJSONBuffer(vinyl, enc, buf) /* null | Error */ {
+        /* THINKME: We should validate it against actual JSON schemata, not
+         * only its well-formedness. */
+        try {
+            jsonlint.parse(buf.toString(enc));
+        }
+        catch (e) {
+            return Error(`${vinyl.path}: ${e.message}`);
+        }
+    }
 }
 
 function transpileTypeScript(tsConfigPath) {
@@ -119,7 +123,7 @@ exports.contents = function contents(cb) {
                     tasks.push(
                         function copyData() {
                             return src(srcGlob, {cwd: "src"})
-                                .pipe(validateJSON())
+                                .pipe(new ValidateJSON())
                                 .pipe(dest(destPath));
                         });
                 }
