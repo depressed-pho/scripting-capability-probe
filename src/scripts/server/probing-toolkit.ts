@@ -382,7 +382,7 @@ export class Expectation {
                     errorCtor = args[0];
                 }
                 else {
-                    errorMsg = toRegExp(args[1]);
+                    errorMsg = toRegExp(args[0]);
                 }
                 break;
             case 2:
