@@ -2,19 +2,25 @@ const fancyLog = require("fancy-log");
 const { Writable } = require("node:stream");
 const { chmod, lstat, mkdir, readdir, readlink,
         rm, symlink, writeFile } = require("node:fs/promises");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const streamReadAll = require("stream-read-all");
+const Vinyl = require("vinyl");
 
 class Overwrite extends Writable {
     #destDir;  // string
     #destTree; // Map<string, Stats>
-    #opts;     // {dryRun?: boolean, verbose?: boolean}
+    #opts;     // {compareWith?: 'content'|'mtime', dryRun?: boolean, verbose?: boolean}
 
     constructor(destDir, opts = {}) {
         super({objectMode: true});
         this.#destDir = destDir;
         this.#opts    = opts;
 
+        if (!this.#opts.compareWith) {
+            this.#opts.compareWith = 'mtime';
+        }
         if (this.#opts.dryRun) {
             this.#opts.verbose = true;
         }
@@ -97,9 +103,9 @@ class Overwrite extends Writable {
             }
             else {
                 if (stOld.isFile()) {
-                    if (stOld.mtime < stNew.mtime) {
+                    if (await this.#isOutdatedFile(vinyl)) {
                         // There is an existing regular file there, but
-                        // it's an old one.
+                        // it's an outdated one.
                         await this.#rm(absPath);
                         await this.#writeFile(absPath, vinyl.contents, stNew.mode);
                     }
@@ -139,6 +145,43 @@ class Overwrite extends Writable {
             else {
                 await this.#writeFile(absPath, vinyl.contents, stNew.mode);
             }
+        }
+    }
+
+    async #isOutdatedFile(vinyl) {
+        const absPath = path.resolve(this.#destDir, vinyl.relative);
+
+        switch (this.#opts.compareWith) {
+        case "content":
+            const dOld = await this.#digest(vinyl);
+            const dNew = await this.#digest(new Vinyl({
+                path:     absPath,
+                contents: fs.createReadStream(absPath)
+            }));
+            return dOld.compare(dNew) != 0;
+
+        case "mtime":
+            const stOld = this.#destTree.get(absPath);
+            const stNew = vinyl.stat;
+            return stOld.mtime < stNew.mtime;
+
+        default:
+            throw Error("Unknown comparison mode: ${this.#opts.compareWith}");
+        }
+    }
+
+    async #digest(vinyl) {
+        const hash = crypto.createHash("sha1");
+
+        if (vinyl.isBuffer()) {
+            hash.update(vinyl.contents);
+            return hash.digest();
+        }
+        else if (vinyl.isStream()) {
+            return await streamReadAll(vinyl.contents.pipe(hash));
+        }
+        else {
+            throw Error("Cannot digest a null vinyl");
         }
     }
 

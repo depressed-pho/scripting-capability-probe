@@ -108,7 +108,10 @@ export default group("Syntax", [
         }),
         probe("with strings, in function calls", async function* () {
             // Implicit conversion from string to number.
-            expect(eval("Math.max(...\"1234\")")).to.equal(4);
+            expect(eval("Math.max(...'1234')")).to.equal(4);
+        }),
+        probe("with strings, in array literals", async function* () {
+            expect(eval("['a', ...'bcd', 'e']")).to.deeply.equal(["a", "b", "c", "d", "e"]);
         })
     ])
 ]);

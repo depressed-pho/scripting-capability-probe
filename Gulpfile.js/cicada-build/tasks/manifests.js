@@ -6,10 +6,10 @@ exports.manifests = async function manifests() {
     const proj = new Project("package.json", "src/manifest.js");
 
     for (const pack of proj.packs) {
-        const stagePath = pack.stagePath("dist/stage");
-        await mkdir(stagePath, {recursive: true});
+        const buildPath = pack.stagePath("dist/build");
+        await mkdir(buildPath, {recursive: true});
 
         const maniStr = JSON.stringify(pack.manifest, null, 4) + "\n";
-        await writeFile(path.resolve(stagePath, "manifest.json"), maniStr);
+        await writeFile(path.resolve(buildPath, "manifest.json"), maniStr);
     }
 };

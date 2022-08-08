@@ -6,6 +6,7 @@
   "scripts": {
     "build": "gulp",
     "clean": "gulp clean",
+    "distclean": "gulp distclean",
     "install": "gulp install",
     "watch": "gulp watch",
     "test": "echo \"Error: no test specified\" && exit 1"

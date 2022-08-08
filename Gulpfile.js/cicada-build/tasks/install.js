@@ -4,7 +4,7 @@ const process = require("node:process");
 const fancyLog = require("fancy-log");
 const { readdir, readFile, rename, rm } = require("node:fs/promises");
 const { pipeline } = require("node:stream/promises");
-const { src, dest } = require("gulp");
+const { src } = require("gulp");
 const { overwrite } = require("../streams/overwrite.js");
 const { Project } = require("../project.js");
 require("dotenv").config();
@@ -75,7 +75,7 @@ exports.installIfPossible = async function installIfPossible() {
             fancyLog.info(`Installing: ${installPath}`);
             await pipeline(
                 src("**", {cwd: stagePath}),
-                overwrite(installPath, {verbose: false})
+                overwrite(installPath, {compareWith: "mtime", verbose: false})
             );
         }
     }

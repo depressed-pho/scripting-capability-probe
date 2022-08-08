@@ -101,10 +101,10 @@ exports.contents = function contents(cb) {
     const tasks = [];
 
     for (const pack of proj.packs) {
-        const stagePath = pack.stagePath("dist/stage");
+        const buildPath = pack.stagePath("dist/build");
         for (const mod of pack.modules) {
             for (const [srcGlob, destDir] of mod.include.entries()) {
-                const destPath = path.resolve(stagePath, destDir);
+                const destPath = path.resolve(buildPath, destDir);
 
                 switch (mod.type) {
                 case "script":
@@ -134,7 +134,7 @@ exports.contents = function contents(cb) {
             function copyLicense() {
                 return src("LICENSE", {allowEmpty: true})
                     .pipe(src("COPYING", {allowEmpty: true}))
-                    .pipe(dest(stagePath));
+                    .pipe(dest(buildPath));
             });
     }
 
