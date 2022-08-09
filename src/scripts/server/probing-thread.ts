@@ -28,9 +28,13 @@ export class ProbingThread extends Thread {
             console.log(ProbingThread.#line(1));
 
             try {
-                yield* probeRoot.run(async () => {
-                    player.title.setActionBar("Probing:\n" + progBar.toString());
-                });
+                yield* probeRoot.run(
+                    async () => {
+                        player.title.setActionBar("Probing:\n" + progBar.toString());
+                    },
+                    async () => {
+                        progBar.done++;
+                    });
             }
             catch (e) {
                 if (e instanceof ThreadCancellationRequested) {

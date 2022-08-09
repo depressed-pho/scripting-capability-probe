@@ -68,10 +68,6 @@ exports.installIfPossible = async function installIfPossible() {
             // directory is typically mounted via a slow link (except on
             // Windows) and wasting the bandwidth incurs a huge performance
             // penalty.
-            //
-            // Note, however, that generated files are still rebuilt all
-            // the time and they need to be copied every time they are
-            // rebuilt. There is no safe way to suppress that.
             fancyLog.info(`Installing: ${installPath}`);
             await pipeline(
                 src("**", {cwd: stagePath}),

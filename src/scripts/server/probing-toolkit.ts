@@ -63,21 +63,32 @@ export class Group {
     }
 
     public async *run(beforeProbe?: () => Promise<unknown>,
+                      afterProbe?:  () => Promise<unknown>,
                       groupLevel: number = 0): AsyncGenerator {
         this.#enter(groupLevel);
-        for (const child of this.#children) {
-            if (child instanceof Group) {
-                yield* child.run(beforeProbe, groupLevel + 1);
-            }
-            else {
-                console.assert(child instanceof Probe);
-                if (beforeProbe) {
-                    await beforeProbe();
+        try {
+            for (const child of this.#children) {
+                if (child instanceof Group) {
+                    yield* child.run(beforeProbe, afterProbe, groupLevel + 1);
                 }
-                yield* child;
+                else {
+                    console.assert(child instanceof Probe);
+                    if (beforeProbe) {
+                        await beforeProbe();
+                    }
+                    yield* child;
+                    if (afterProbe) {
+                        await afterProbe();
+                    }
+                    // It's possible that the probe didn't yield even once. Do
+                    // it now, or we wouldn't be able to cancel the thread.
+                    yield;
+                }
             }
         }
-        this.#leave();
+        finally {
+            this.#leave();
+        }
     }
 
     public [Symbol.asyncIterator](): AsyncGenerator {

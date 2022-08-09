@@ -7,6 +7,13 @@ export class Session {
     public constructor() {
         this.probingThread = null;
     }
+
+    /** Do not call this directly. */
+    public finalise(): void {
+        if (this.probingThread) {
+            this.probingThread.cancel();
+        }
+    }
 }
 
 export class SessionManager {
@@ -29,7 +36,10 @@ export class SessionManager {
     }
 
     public destroy(playerName: string): this {
-        if (this.#sessions.delete(playerName)) {
+        const s = this.#sessions.get(playerName);
+        if (s) {
+            s.finalise();
+            this.#sessions.delete(playerName);
             return this;
         }
         else {

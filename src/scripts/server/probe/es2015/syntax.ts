@@ -1,5 +1,11 @@
 import { group, probe, expect } from "../../probing-toolkit";
 
+function createIterableObject<T>(src: Iterable<T>): Iterable<T> {
+    return {
+        [Symbol.iterator]: src[Symbol.iterator].bind(src)
+    };
+}
+
 export default group("Syntax", [
     group("Default function parameters", [
         probe("basic functionality", async function* () {
@@ -112,6 +118,42 @@ export default group("Syntax", [
         }),
         probe("with strings, in array literals", async function* () {
             expect(eval("['a', ...'bcd', 'e']")).to.deeply.equal(["a", "b", "c", "d", "e"]);
+        }),
+        probe("with astral plane strings, in function calls", async function* () {
+            expect(eval("Array(...'𠮷𠮶')")).to.deeply.equal(["𠮷", "𠮶"]);
+        }),
+        probe("with astral plane strings, in array literals", async function* () {
+            expect(eval("[...'𠮷𠮶']")).to.deeply.equal(["𠮷", "𠮶"]);
+        }),
+        probe("with generator instances, in calls", async function* () {
+            const gen = eval(`
+                function* gen() {
+                    yield 1;
+                    yield 2;
+                    yield 3;
+                }
+                gen
+            `);
+            expect(eval("Array(...gen())")).to.deeply.equal([1, 2, 3]);
+        }),
+        probe("with generator instances, in arrays", async function* () {
+            const gen = eval(`
+                function* gen() {
+                    yield 1;
+                    yield 2;
+                    yield 3;
+                }
+                gen
+            `);
+            expect(eval("[...gen()]")).to.deeply.equal([1, 2, 3]);
+        }),
+        probe("with generic iterables, in calls", async function* () {
+            const iterable = createIterableObject([1, 2, 3]);
+            expect(eval("Array(...iterable)")).to.deeply.equal([1, 2, 3]);
+        }),
+        probe("with generic iterables, in arrays", async function* () {
+            const iterable = createIterableObject(["b", "c"]);
+            expect(eval("['a', ...iterable]")).to.deeply.equal(["a", "b", "c"]);
         })
     ])
 ]);
