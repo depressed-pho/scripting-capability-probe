@@ -2,7 +2,7 @@ import { group, probe, expect } from "../../probing-toolkit";
 
 export default group("Optimisation", [
     group("Tail call optimisation", [
-        probe("direct recursion", async function* () {
+        probe("direct recursion", () => {
             "use strict";
             function f(n: number): string {
                 if (n <= 0) {
@@ -14,7 +14,7 @@ export default group("Optimisation", [
             }
             expect(f(1e6)).to.equal("foo");
         }),
-        probe("mutual recursion", async function* () {
+        probe("mutual recursion", () => {
             "use strict";
             function f(n: number): string {
                 if (n <= 0) {

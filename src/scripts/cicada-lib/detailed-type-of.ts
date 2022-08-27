@@ -15,7 +15,7 @@ export function detailedTypeOf(obj: any): string {
     // Object.prototype.toString is *slow*. Avoid using it whenever
     // possible.
     switch (Object.getPrototypeOf(obj)) {
-        case null:               return "Object";
+        case null:               return "object"; // Not "Object"
         case RegExp.prototype:   return "RegExp";
         case Date.prototype:     return "Date";
         case Promise.prototype:  return "Promise";
@@ -25,6 +25,7 @@ export function detailedTypeOf(obj: any): string {
         case WeakSet.prototype:  return "WeakSet";
         case DataView.prototype: return "DataView";
         default:
-            return Object.prototype.toString.call(obj).slice(8, -1);
+            const ty = Object.prototype.toString.call(obj).slice(8, -1);
+            return ty === "Object" ? "object" : ty;
     }
 }

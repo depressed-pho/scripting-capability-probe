@@ -17,7 +17,7 @@ module.exports = {
         icon: "capability-probe.svg",
 
         // Required
-        min_engine_version: "1.19.10"
+        min_engine_version: "1.19.21"
     },
     // Packs to generate (required).
     packs: [
