@@ -1,8 +1,8 @@
-import { console } from "../../cicada-lib/console"; // THINKME: Rewrite library paths
-import { hasInstance } from "../../cicada-lib/has-instance";
+import { console } from "cicada-lib/console";
+import { hasInstance } from "cicada-lib/has-instance";
+import * as Fmt from "cicada-lib/fmt-code";
 import { Probe } from "./probe";
 import { useFormatCodes } from "./config";
-import * as Fmt from "../../cicada-lib/fmt-code";
 
 export class Group {
     readonly #title?: string; // Groups can be anonymous.

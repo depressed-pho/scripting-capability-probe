@@ -1,8 +1,8 @@
-import { console } from "../../cicada-lib/console";
-import { hasInstance } from "../../cicada-lib/has-instance";
-import { ThreadCancellationRequested } from "../../cicada-lib/thread";
+import { console } from "cicada-lib/console";
+import { hasInstance } from "cicada-lib/has-instance";
+import { ThreadCancellationRequested } from "cicada-lib/thread";
+import * as Fmt from "cicada-lib/fmt-code";
 import { useFormatCodes, showFailureDetails } from "./config";
-import * as Fmt from "../../cicada-lib/fmt-code";
 
 export type ProbeWorker = () => (void|Promise<unknown>|AsyncGenerator);
 

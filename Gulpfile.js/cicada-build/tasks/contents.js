@@ -1,13 +1,14 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const process = require("node:process");
+const util = require("node:util");
 const jsonlint = require("jsonlint");
 const fancyLog = require("fancy-log");
 const gulpIf = require("gulp-if");
 const ts = require("gulp-typescript");
 const streamReadAll = require("stream-read-all");
 const merge = require("merge");
-const { Transform } = require("node:stream");
+const { Transform, compose } = require("node:stream");
 const { parallel, src, dest } = require("gulp");
 const { Project } = require("../project.js");
 const { requireUncached } = require("../utils.js");
@@ -31,7 +32,7 @@ class ValidateJSON extends Transform {
             else if (vinyl.isStream()) {
                 streamReadAll(vinyl.contents.clone())
                     .then(buf => {
-                        const e = ValidateJSON.#validateJSONBuffer(vinyl, buf);
+                        const e = ValidateJSON.#validateJSONBuffer(vinyl, enc, buf);
                         if (e) {
                             cb(e);
                         }
@@ -62,6 +63,101 @@ class ValidateJSON extends Transform {
     }
 }
 
+// Why doesn't tsc does this for us? Just why?
+class RewriteTypescriptImports extends Transform {
+    #baseUrl;
+    #paths;
+
+    constructor(baseUrl, paths) {
+        super({objectMode: true});
+        this.#baseUrl = baseUrl;
+        this.#paths   = paths;
+    }
+
+    _transform(vinyl, enc, cb) {
+        // THINKME: We should probably update source
+        // maps. gulp-transform-js-ast does that, but we can't use it
+        // because it is heavily outdated and cannot parse modern ES.
+        if (vinyl.isBuffer()) {
+            try {
+                vinyl.contents = this.#rewriteBuffer(vinyl.path, vinyl.contents, enc);
+                cb(null, vinyl);
+            }
+            catch (e) {
+                cb(e);
+            }
+        }
+        else if (vinyl.isStream()) {
+            streamReadAll(vinyl.contents.clone())
+                .then(buf => {
+                    try {
+                        vinyl.contents = this.#rewriteBuffer(vinyl.path, buf, enc);
+                        cb(null, vinyl);
+                    }
+                    catch (e) {
+                        cb(e);
+                    }
+                });
+        }
+        else {
+            cb(null, vinyl);
+        }
+    }
+
+    #rewriteBuffer(sourcePath, buf, enc) {
+        const sourceInput = buf.toString(enc);
+
+        // NOTE: We want to use recast
+        // (https://www.npmjs.com/package/recast) but we can't, since it
+        // cannot handle some of modern ES syntaxes we use. So... the
+        // "solution" is to apply a damn RegExp transformation.
+        const sourceOutput = sourceInput.replaceAll(
+            /(import|export)(.*?)from\s*(?:"([^"]+)"|'([^']+)')/g,
+            (match, impExp, locals, dqPath, sqPath) => {
+                const origPath = dqPath != null ? dqPath : sqPath;
+                const newPath  = this.#rewritePath(origPath, sourcePath);
+                return `${impExp}${locals}from "${newPath}"`;
+            });
+
+        return Buffer.from(sourceOutput, enc);
+    }
+
+    #rewritePath(origPath, sourcePath) {
+        for (const [from, to] of Object.entries(this.#paths)) {
+            if (origPath === from) {
+                // Exact match
+                for (const candidate of to) {
+                    if (candidate.endsWith("/*")) {
+                        throw new Error(`Invalid path candidate: ${candidate}`);
+                    }
+                    const base = path.resolve(this.#baseUrl, candidate);
+                    if (fs.existsSync(base) || fs.existsSync(base + ".ts")) {
+                        return path.relative(path.dirname(sourcePath), base);
+                    }
+                }
+                throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
+            }
+            else if (from.endsWith("/*") && origPath.startsWith(from.slice(0, -1))) {
+                // Wildcard match
+                const wildcarded = origPath.slice(from.length - 1);
+
+                for (const candidate of to) {
+                    if (!candidate.endsWith("/*")) {
+                        throw new Error(`Invalid path candidate: ${candidate}`);
+                    }
+                    const stem = candidate.slice(0, -1);
+                    const base = path.resolve(this.#baseUrl, stem, wildcarded);
+                    if (fs.existsSync(base) || fs.existsSync(base + ".ts")) {
+                        return path.relative(path.dirname(sourcePath), base);
+                    }
+                }
+                throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
+            }
+        }
+        return origPath;
+    }
+}
+
 function transpileTypeScript(tsConfigPath) {
     const tsConfigDefault = {
         compilerOptions: {
@@ -70,7 +166,9 @@ function transpileTypeScript(tsConfigPath) {
             noPropertyAccessFromIndexSignature: true,
             noUncheckedIndexedAccess: true,
             strict: true,
+            baseUrl: "src",
             module: "ES2020",
+            paths:  {},
             target: "ES2022",
             explainFiles: true
         }
@@ -82,6 +180,8 @@ function transpileTypeScript(tsConfigPath) {
             ? requireUncached(path.resolve(tsConfigPath))
             : {});
     const tsProj = ts.createProject(tsConfig.compilerOptions);
+    const rewrite = new RewriteTypescriptImports(
+        tsConfig.compilerOptions.baseUrl, tsConfig.compilerOptions.paths);
 
     return gulpIf(
         vinyl => {
@@ -92,7 +192,7 @@ function transpileTypeScript(tsConfigPath) {
             }
             return isTypeScript;
         },
-        tsProj()
+        compose(tsProj(), rewrite)
     );
 }
 

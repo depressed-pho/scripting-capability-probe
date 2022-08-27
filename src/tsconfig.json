@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "baseUrl": "src/scripts",
+        "paths": {
+            "cicada-lib/*": [
+                "cicada-lib/*"
+            ]
+        }
+    }
+}

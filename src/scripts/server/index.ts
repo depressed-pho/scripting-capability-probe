@@ -1,8 +1,8 @@
+import { world } from "cicada-lib/world";
+import { ItemUseEvent } from "cicada-lib/entity";
+import { ItemStack } from "cicada-lib/item-stack";
+import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "cicada-lib/player";
 import { sessionManager } from "./player-session";
-import { world } from "../cicada-lib/world";
-import { ItemUseEvent } from "../cicada-lib/entity";
-import { ItemStack } from "../cicada-lib/item-stack";
-import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "../cicada-lib/player";
 import { ProbingThread } from "./probing-thread";
 
 world.on("playerJoin", (ev: PlayerJoinEvent) => {

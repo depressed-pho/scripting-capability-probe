@@ -1,9 +1,9 @@
-import { console } from "../cicada-lib/console";
-import { delay } from "../cicada-lib/delay";
-import { Player } from "../cicada-lib/player";
-import { ProgressBar } from "../cicada-lib/progress-bar";
-import { Thread, ThreadCancellationRequested } from "../cicada-lib/thread";
-import { Timer } from "../cicada-lib/timer";
+import { console } from "cicada-lib/console";
+import { delay } from "cicada-lib/delay";
+import { Player } from "cicada-lib/player";
+import { ProgressBar } from "cicada-lib/progress-bar";
+import { Thread, ThreadCancellationRequested } from "cicada-lib/thread";
+import { Timer } from "cicada-lib/timer";
 import probeRoot from "./probe";
 
 export class ProbingThread extends Thread {
