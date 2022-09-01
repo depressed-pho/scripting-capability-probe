@@ -1,6 +1,6 @@
 import { deepEqual } from "cicada-lib/deep-equal";
 import { detailedTypeOf } from "cicada-lib/detailed-type-of";
-import { inspect, InspectOptions } from "cicada-lib/inspect";
+import { inspect } from "cicada-lib/inspect";
 import { getPathInfo } from "cicada-lib/objpath";
 import { format } from "cicada-lib/format";
 import { useFormatCodes } from "./config";
@@ -217,6 +217,11 @@ export class Expectation {
                 }
             }
         }
+    }
+
+    /** Alias to {@link equal}. */
+    public equals(val: any, msg?: string): this {
+        return this.equal(val, msg);
     }
 
     /** Make subsequent calls of {@link property} search for only own properties
@@ -665,14 +670,46 @@ export class Expectation {
 
     /** Expect that a given method exists in a class or an object. */
     public respondTo(method: PropertyKey, msg?: string): this {
-        if (typeof this.#val === "function" && !this.#itself) {
-            return this.to.have.a.property("prototype")
-                .that.has.a.property(method)
-                .that.is.a("function", msg);
+        if (this.#not) {
+            if (typeof this.#val === "object" || typeof this.#val === "function") {
+                if (typeof this.#val === "function" && !this.#itself) {
+                    if (typeof this.#val.prototype === "object") {
+                        if (typeof this.#val.prototype[method] === "function") {
+                            throw new ExpectationFailed(
+                                msg != null
+                                    ? msg
+                                    : format("%s does respond to %s",
+                                             Expectation.#pretty(this.#val),
+                                             Expectation.#pretty(method)));
+                        }
+                    }
+                }
+                else {
+                    if (typeof this.#val[method] === "function") {
+                        throw new ExpectationFailed(
+                            msg != null
+                                ? msg
+                                : format("%s does respond to %s",
+                                         Expectation.#pretty(this.#val),
+                                         Expectation.#pretty(method)));
+                    }
+                }
+            }
+            return this;
         }
         else {
-            return this.to.have.a.property(method)
-                .that.is.a("function", msg);
+            // We don't want .own to affect .property() here.
+            if (typeof this.#val === "function" && !this.#itself) {
+                return new (this.constructor as any)(this.#val)
+                    .to.have.a.property("prototype")
+                    .that.has.a.property(method)
+                    .that.is.a("function", msg);
+            }
+            else {
+                return new (this.constructor as any)(this.#val)
+                    .to.have.a.property(method)
+                    .that.is.a("function", msg);
+            }
         }
     }
 

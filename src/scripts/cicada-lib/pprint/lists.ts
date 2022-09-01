@@ -1,4 +1,4 @@
-import { Doc, beside, nesting } from "./primitives";
+import { Doc, beside } from "./primitives";
 import { align, cat, comma, lbrace, lbracket, lparen, rbrace, rbracket,
          rparen, semi } from "./combinators";
 

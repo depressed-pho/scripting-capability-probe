@@ -37,6 +37,7 @@ function describe<T, V>(key: PropertyKey,
         function get(this: T) {
             const v = (value as () => V).call(this);
 
+            // @ts-ignore: exactOptionalPropertyTypes isn't quite helpful here.
             Object.defineProperty(this, key, {
                 value:        v,
                 configurable: attrs.configurable,
@@ -48,6 +49,7 @@ function describe<T, V>(key: PropertyKey,
         }
 
         function set(this: T, value: any) {
+            // @ts-ignore: exactOptionalPropertyTypes isn't quite helpful here.
             Object.defineProperty(this, key, {
                 value,
                 configurable: attrs.configurable,
@@ -56,6 +58,7 @@ function describe<T, V>(key: PropertyKey,
             });
         }
 
+        // @ts-ignore: exactOptionalPropertyTypes isn't quite helpful here.
         return {
             get,
             set:          attrs.writable ? set : undefined,
@@ -64,7 +67,8 @@ function describe<T, V>(key: PropertyKey,
         };
     }
     else {
-        /* It's not actually lazy. */
+        // It's not actually lazy.
+        // @ts-ignore: exactOptionalPropertyTypes isn't quite helpful here.
         return {
             value,
             configurable: attrs.configurable,

@@ -5,7 +5,7 @@ import { Probe } from "./probe";
 import { useFormatCodes } from "./config";
 
 export class Group {
-    readonly #title?: string; // Groups can be anonymous.
+    readonly #title: string|undefined; // Groups can be anonymous.
     readonly #children: (Group|Probe)[];
 
     public constructor(title: string|undefined, children: (Group|Probe)[]) {

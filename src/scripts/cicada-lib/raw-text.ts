@@ -18,7 +18,9 @@ class TranslateElement extends RawTextElement {
     constructor(translate: string, subst?: string[] | RawText) {
         super();
         this.translate = translate;
-        this.with      = subst;
+        if (subst !== undefined) {
+            this.with = subst;
+        }
     }
 
     public addSubst(subst: string | RawText): this {
@@ -49,7 +51,9 @@ class ScoreElement extends RawTextElement {
         super();
         this.name      = name;
         this.objective = objective;
-        this.value     = value;
+        if (value !== undefined) {
+            this.value = value;
+        }
     }
 }
 

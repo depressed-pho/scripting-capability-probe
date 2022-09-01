@@ -8,10 +8,12 @@ export default group("Bindings", [
         }),
         probe("is block-scoped", () => {
             const foo = 123;
+            // @ts-ignore: `foo' won't be read.
             { const foo = 456; }
             expect(foo).to.equal(123);
         }),
         probe("scope shadow resolution", () => {
+            // @ts-ignore: `foo' won't be read.
             { const foo = 456; }
             const foo = 123;
             expect(foo).to.equal(123);
@@ -30,6 +32,7 @@ export default group("Bindings", [
         }),
         probe("for loop statement scope", () => {
             const foo = 0;
+            // @ts-ignore: `foo' won't be read.
             for (const foo = 1; false; ) {}
             expect(foo).to.equal(0);
         }),
@@ -70,10 +73,12 @@ export default group("Bindings", [
         }),
         probe("is block-scoped", () => {
             let foo = 123;
+            // @ts-ignore: `foo' won't be read.
             { let foo = 456; }
             expect(foo).to.equal(123);
         }),
         probe("scope shadow resolution", () => {
+            // @ts-ignore: `foo' won't be read.
             { let foo = 456; }
             let foo = 123;
             expect(foo).to.equal(123);
@@ -86,6 +91,7 @@ export default group("Bindings", [
         }),
         probe("for loop statement scope", () => {
             let foo = 0;
+            // @ts-ignore: `foo' won't be read.
             for (let foo = 1; false; ) {}
             expect(foo).to.equal(0);
         }),

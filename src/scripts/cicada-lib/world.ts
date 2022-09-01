@@ -32,7 +32,7 @@ export class World extends EventEmitter {
          * it's ready. This is strange and is very inconvenient but is
          * apparently an intended behaviour.
          */
-        this.#world.events.tick.subscribe(ev => {
+        this.#world.events.tick.subscribe(() => {
             if (!this.#isReady) {
                 try {
                     // Strange... this works even if the only player

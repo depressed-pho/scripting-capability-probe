@@ -121,6 +121,7 @@ export default group("Syntax", [
             expect(eval("[...'𠮷𠮶']")).to.deeply.equal(["𠮷", "𠮶"]);
         }),
         probe("with generator instances, in calls", () => {
+            // @ts-ignore: `gen' won't be read visibly to tsc.
             const gen = eval(`
                 function* gen() {
                     yield 1;
@@ -132,6 +133,7 @@ export default group("Syntax", [
             expect(eval("Array(...gen())")).to.deeply.equal([1, 2, 3]);
         }),
         probe("with generator instances, in arrays", () => {
+            // @ts-ignore: `gen' won't be read visibly to tsc.
             const gen = eval(`
                 function* gen() {
                     yield 1;
@@ -143,18 +145,22 @@ export default group("Syntax", [
             expect(eval("[...gen()]")).to.deeply.equal([1, 2, 3]);
         }),
         probe("with generic iterables, in calls", () => {
+            // @ts-ignore: `iterable' won't be read visibly to tsc.
             const iterable = createIterableObject([1, 2, 3]);
             expect(eval("Array(...iterable)")).to.deeply.equal([1, 2, 3]);
         }),
         probe("with generic iterables, in arrays", () => {
+            // @ts-ignore: `iterable' won't be read visibly to tsc.
             const iterable = createIterableObject(["b", "c"]);
             expect(eval("['a', ...iterable]")).to.deeply.equal(["a", "b", "c"]);
         }),
         probe("with instances of iterables, in calls", () => {
+            // @ts-ignore: `iterable' won't be read visibly to tsc.
             const iterable = createIterableObject([1, 2, 3]);
             expect(eval("Array(...Object.create(iterable))")).to.deeply.equal([1, 2, 3]);
         }),
         probe("with instances of iterables, in arrays", () => {
+            // @ts-ignore: `iterable' won't be read visibly to tsc.
             const iterable = createIterableObject(["b", "c"]);
             expect(eval("['a', ...Object.create(iterable)]")).to.deeply.equal(["a", "b", "c"]);
         }),
@@ -165,10 +171,12 @@ export default group("Syntax", [
     ]),
     group("Object literal extensions", [
         probe("computed properties", () => {
+            // @ts-ignore: `x' won't be read visibly to tsc.
             const x = "y";
             expect(eval(`let r = {[x]: 1}; r`)).to.deeply.equal({y: 1});
         }),
         probe("shorthand properties", () => {
+            // @ts-ignore: `a', `b' won't be read visibly to tsc.
             const a = 7, b = 8;
             expect(eval(`let r = {a, b}; r`)).to.deeply.equal({a: 7, b: 8});
         }),
@@ -193,6 +201,7 @@ export default group("Syntax", [
             expect(obj["foo bar"]()).to.equal(4);
         }),
         probe("computed shorthand methods", () => {
+            // @ts-ignore: `x' won't be read visibly to tsc.
             const x   = "y";
             const obj = eval(`
                 let r = {
@@ -205,6 +214,7 @@ export default group("Syntax", [
         }),
         probe("computed accessors", () => {
             let   v   = null;
+            // @ts-ignore: `x' won't be read visibly to tsc.
             const x   = "y";
             const obj = eval(`
                 let r = {
@@ -311,6 +321,7 @@ export default group("Syntax", [
         }),
         probe("iterator closing, break", () => {
             let closed = false;
+            // @ts-ignore: `i' won't be read visibly to tsc.
             const i = createIterableObject(["b", "c"], {
                 return() {
                     closed = true;
@@ -333,6 +344,7 @@ export default group("Syntax", [
         }),
         probe("iterator closing, throw", () => {
             let closed = false;
+            // @ts-ignore: `i' won't be read visibly to tsc.
             const i = createIterableObject(["b", "c"], {
                 return() {
                     closed = true;
@@ -400,7 +412,7 @@ ${a + "z"} ${b.toLowerCase()}`;
             expect(called).to.be.true;
         }),
         probe("passed array is frozen", () => {
-            function fn(parts: TemplateStringsArray, ...params: any[]) {
+            function fn(parts: TemplateStringsArray, ..._params: any[]) {
                 expect(parts).to.satisfy(Object.isFrozen);
                 expect(parts.raw).to.satisfy(Object.isFrozen);
             }
@@ -502,6 +514,7 @@ ${a + "z"} ${b.toLowerCase()}`;
                     return {};
                 }
             });
+            // @ts-ignore: `a', `b' won't be read.
             const [a, b] = iter;
             expect(closed).to.be.true;
         }),
@@ -527,9 +540,11 @@ ${a + "z"} ${b.toLowerCase()}`;
         }),
         probe("throws on null and undefined", () => {
             const f = () => {
+                // @ts-ignore: `a' won't be read.
                 const {a} = null as any;
             };
             const g = () => {
+                // @ts-ignore: `b' won't be read.
                 const {b} = undefined as any;
             };
             expect(f).to.throw(TypeError);
@@ -656,11 +671,13 @@ ${a + "z"} ${b.toLowerCase()}`;
                     return {};
                 }
             });
+            // @ts-ignore: `a', `b' won't be read.
             let a, b;
             [a, b] = iter;
             expect(closed).to.be.true;
         }),
         probe("iterable destructuring expression", () => {
+            // @ts-ignore: `a', `b' won't be read.
             let a, b, iter = [1, 2];
             expect(([a, b] = iter)).to.equal(iter);
         }),
@@ -694,10 +711,12 @@ ${a + "z"} ${b.toLowerCase()}`;
             expect(a).to.equal(1);
         }),
         probe("object destructuring expression", () => {
+            // @ts-ignore: `a', `b' won't be read.
             let a, b, obj = {a: 1, b: 2};
             expect(({a, b} = obj)).to.equal(obj);
         }),
         probe("parenthesised left-hand-side is a syntax error", () => {
+            // @ts-ignore: `a', `b' won't be read.
             let a, b;
             const f = () => {
                 eval(`({a, b}) = {a: 1, b: 2}`);
@@ -711,10 +730,12 @@ ${a + "z"} ${b.toLowerCase()}`;
         }),
         probe("throws on null and undefined", () => {
             const f = () => {
+                // @ts-ignore: `a' won't be read.
                 let a;
                 ({a} = null as any);
             };
             const g = () => {
+                // @ts-ignore: `b' won't be read.
                 let b;
                 ({b} = undefined as any);
             };
@@ -834,6 +855,7 @@ ${a + "z"} ${b.toLowerCase()}`;
                     return {};
                 }
             });
+            // @ts-ignore: `a' and 'b' are unused.
             function f([a, b]: any) {}
             f(iter);
             expect(closed).to.be.true;
@@ -866,6 +888,7 @@ ${a + "z"} ${b.toLowerCase()}`;
             f({a: 1});
         }),
         probe("throws on null and undefined", () => {
+            // @ts-ignore: `a' is unused.
             function f({a}: any) {}
             function g() {
                 f(null as any);
@@ -890,6 +913,7 @@ ${a + "z"} ${b.toLowerCase()}`;
             f([1, {x: 2}], {d: 3, x: [4]});
         }),
         probe("`arguments' interaction", () => {
+            // @ts-ignore: Parameters are unused.
             function f({a, x: b, c}: any, [d, e]: any) {
                 expect(arguments[0]).to.have.a.property("a", 1);
                 expect(arguments[0]).to.have.a.property("x", 2);
@@ -906,6 +930,7 @@ ${a + "z"} ${b.toLowerCase()}`;
             expect(f({a: 1, x: 2}, [3, 4])).to.deeply.equal([1, 2, undefined, 3, 4]);
         }),
         probe("in parameters, function 'length' property", () => {
+            // @ts-ignore: `a' and 'b' are unused.
             function f({a, b}: any, [c, d]: any) {}
             expect(f.length).to.equal(2);
         }),

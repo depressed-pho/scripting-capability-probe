@@ -1,4 +1,4 @@
-import { ItemEnchants, EnchantmentList } from "./enchantment";
+import { ItemEnchants } from "./enchantment";
 import * as MC from "mojang-minecraft";
 
 export class ItemStack {

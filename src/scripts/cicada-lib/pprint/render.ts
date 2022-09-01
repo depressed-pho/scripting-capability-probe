@@ -213,7 +213,7 @@ function renderFits(fits: (p: number, m: number, w: number, sd: SimpleDoc) => bo
 }
 
 // fits1 does 1 line lookahead.
-function fits1(p: number, m: number, w: number, sd: SimpleDoc): boolean {
+function fits1(_p: number, _m: number, w: number, sd: SimpleDoc): boolean {
     fits1: while (true) {
         if (w < 0) {
             return false;

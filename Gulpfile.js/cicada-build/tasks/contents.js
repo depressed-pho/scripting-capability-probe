@@ -161,11 +161,6 @@ class RewriteTypescriptImports extends Transform {
 function transpileTypeScript(tsConfigPath) {
     const tsConfigDefault = {
         compilerOptions: {
-            noImplicitOverride: true,
-            noImplicitReturns: true,
-            noPropertyAccessFromIndexSignature: true,
-            noUncheckedIndexedAccess: true,
-            strict: true,
             baseUrl: "src",
             module: "ES2020",
             paths:  {},

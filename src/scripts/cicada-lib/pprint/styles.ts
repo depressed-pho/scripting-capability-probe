@@ -1,4 +1,3 @@
-import * as Fmt from "../fmt-code";
 import { Tag, Doc } from "./primitives";
 
 /** Display a document with obfuscation. */

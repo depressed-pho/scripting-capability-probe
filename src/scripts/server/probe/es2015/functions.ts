@@ -33,7 +33,7 @@ export default group("Functions", [
             expect(a.y().bind(b, "baz")()).to.equal("foobaz");
         }),
         probe("lexical `arguments' binding", () => {
-            const f = (function () { return (z: any) => arguments[0] } as any)(1);
+            const f = (function () { return (_z: any) => arguments[0] } as any)(1);
             expect(f(2)).to.equal(1);
         }),
         probe("no line break between params and =>", () => {
@@ -102,6 +102,7 @@ export default group("Functions", [
             const c1 = C;
             {
                 class C {}
+                // @ts-ignore: `c2' won't be read.
                 const c2 = C;
             }
             expect(C).to.equal(c1);
@@ -275,6 +276,7 @@ export default group("Functions", [
             expect(C.method.call(null)).to.be.null;
         }),
         probe("constructors require new", () => {
+            // @ts-ignore: `C' won't be visibly read.
             class C {}
             function f() {
                 return eval(`C()`);
@@ -347,6 +349,7 @@ export default group("Functions", [
                 Base.prototype.baz = "baz";
             `);
             class Inherited extends Base {
+                // @ts-ignore: `a' isn't used visibly to tsc.
                 method(a: string) {
                     return eval(`super.foo + a + super["baz"]`);
                 }
@@ -371,6 +374,7 @@ export default group("Functions", [
         }),
         probe("method calls use correct `this' binding", () => {
             class Base {
+                // @ts-ignore: `a' isn't used visibly to tsc.
                 method(a: string) {
                     return eval(`this.foo + a`);
                 }

@@ -218,7 +218,7 @@ function iterableEqual(x: any, y: any, cache: CacheMap): boolean {
         else if (xElem.done) {
             return true;
         }
-        else if (!deepEqual_(xElem.value, yElem.value)) {
+        else if (!deepEqual_(xElem.value, yElem.value, cache)) {
             return false;
         }
     }
@@ -259,7 +259,7 @@ function getAllKeys(obj: any): PropertyKey[] {
 
 function keysEqual(x: any, y: any, keys: PropertyKey[], cache: CacheMap): boolean {
     for (const key of keys) {
-        if (!deepEqual_(x, y, cache)) {
+        if (!deepEqual_(x[key], y[key], cache)) {
             return false;
         }
     }
