@@ -4,10 +4,10 @@
  * module provides an alternative "console" object that works better. We
  * hope it will eventually go away.
  */
-import { formatWithOptions, stringify } from "./format";
-import { InspectOptions, inspect } from "./inspect";
-import { Timer } from "./timer";
-import * as PP from "./pprint";
+import { formatWithOptions, stringify } from "../format";
+import { InspectOptions, inspect } from "../inspect";
+import { Timer } from "../timer";
+import * as PP from "../pprint";
 
 export enum Severity {
     Debug,
@@ -30,6 +30,8 @@ class Console {
      */
     public colors: boolean = true;
 
+    #origConsole: Console;
+
     // Used for console.count().
     #counts = new Map<string, number>();
 
@@ -38,6 +40,11 @@ class Console {
 
     // Used for console.time().
     #timers = new Map<string, Timer>();
+
+    /// Do not use this directly.
+    constructor(origConsole: Console) {
+        this.#origConsole = origConsole;
+    }
 
     get #inspectOpts(): InspectOptions {
         return {
@@ -174,10 +181,10 @@ class Console {
 
     #log(sev: Severity, ...args: any[]): void {
         if (sev >= this.logLevel) {
-            const func   = sev == Severity.Error ? console.error : console.warn;
+            const func   = sev == Severity.Error ? this.#origConsole.error : this.#origConsole.warn;
             const indent = " ".repeat(this.#currentGroupDepth * this.indentationWidth);
             func.call(
-                console,
+                this.#origConsole,
                 this.#severityToString(sev) + this.#timestamp() + ":",
                 indent + this.#format(...args));
         }
@@ -228,5 +235,13 @@ class Console {
     }
 }
 
-const altConsole = new Console();
-export { altConsole as console };
+if (!("cicada-lib" in globalThis)) {
+    (globalThis as any)["cicada-lib"] = {};
+}
+if (!("shims" in (globalThis as any)["cicada-lib"])) {
+    (globalThis as any)["cicada-lib"]["shims"] = new Set<string>();
+}
+if (!(globalThis as any)["cicada-lib"]["shims"].has("console")) {
+    globalThis.console = new Console(globalThis.console as any) as any;
+    (globalThis as any)["cicada-lib"]["shims"].add("console");
+}

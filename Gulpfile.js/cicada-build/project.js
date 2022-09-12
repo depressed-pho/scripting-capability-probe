@@ -27,19 +27,12 @@ function triplet(ver /* SemVer */) {
     }
 }
 
-function rootOf(glob) {
-    return glob.split(path.sep)[0];
-}
-
-function parseIncl(incl /* string | string[] | {[string]: string} */) {
+function parseIncl(incl /* string | string[] */) {
     if (typeof incl === "string") {
-        return parseIncl({[incl]: rootOf(incl)});
-    }
-    else if (incl instanceof Array) {
-        return parseIncl(Object.fromEntries(incl.map(glob => [glob, rootOf(glob)])));
+        return new Set([incl]);
     }
     else {
-        return new Map(Object.entries(incl));
+        return new Set(incl);
     }
 }
 
@@ -49,7 +42,7 @@ class Module {
         this.type        = modSrc.type;
         this.uuid        = modSrc.uuid;
         this.version     = parseVer(modSrc.version);
-        this.include     = parseIncl(modSrc.include); // Map<string, string>
+        this.include     = parseIncl(modSrc.include); // Set<string>
     }
 
     get manifest() {

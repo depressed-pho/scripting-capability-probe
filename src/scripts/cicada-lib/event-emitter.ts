@@ -1,5 +1,3 @@
-import { console } from "./console";
-
 /**
  * An implementation of node.js EventEmitter that is suitable for the Bedrock engine.
  */

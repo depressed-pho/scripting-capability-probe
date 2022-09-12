@@ -1,4 +1,3 @@
-import { console } from "cicada-lib/console";
 import { Player } from "cicada-lib/player";
 import { ProgressBar } from "cicada-lib/progress-bar";
 import { Thread, ThreadCancellationRequested } from "cicada-lib/thread";

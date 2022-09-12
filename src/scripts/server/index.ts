@@ -1,3 +1,4 @@
+import "cicada-lib/shims/console";
 import { world } from "cicada-lib/world";
 import { ItemUseEvent } from "cicada-lib/entity";
 import { ItemStack } from "cicada-lib/item-stack";

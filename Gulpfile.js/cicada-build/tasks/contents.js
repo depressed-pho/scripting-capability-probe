@@ -112,11 +112,16 @@ class RewriteTypescriptImports extends Transform {
         // cannot handle some of modern ES syntaxes we use. So... the
         // "solution" is to apply a damn RegExp transformation.
         const sourceOutput = sourceInput.replaceAll(
-            /(import|export)(.*?)from\s*(?:"([^"]+)"|'([^']+)')/g,
+            /(import|export)(?:(.*?)from)?\s*(?:"([^"]+)"|'([^']+)')/g,
             (match, impExp, locals, dqPath, sqPath) => {
                 const origPath = dqPath != null ? dqPath : sqPath;
                 const newPath  = this.#rewritePath(origPath, sourcePath);
-                return `${impExp}${locals}from "${newPath}"`;
+                if (locals == null) {
+                    return `${impExp} "${newPath}"`;
+                }
+                else {
+                    return `${impExp}${locals}from "${newPath}"`;
+                }
             });
 
         return Buffer.from(sourceOutput, enc);
@@ -161,6 +166,7 @@ class RewriteTypescriptImports extends Transform {
 function transpileTypeScript(tsConfigPath) {
     const tsConfigDefault = {
         compilerOptions: {
+            rootDir: "src",
             baseUrl: "src",
             module: "ES2020",
             paths:  {},
@@ -198,30 +204,27 @@ exports.contents = function contents(cb) {
     for (const pack of proj.packs) {
         const buildPath = pack.stagePath("dist/build");
         for (const mod of pack.modules) {
-            for (const [srcGlob, destDir] of mod.include.entries()) {
-                const destPath = path.resolve(buildPath, destDir);
+            const srcGlobs = Array.from(mod.include.values());
 
-                switch (mod.type) {
-                case "script":
-                    /* Special case: the script module often needs a
-                     * transpilation. */
-                    tasks.push(
-                        function transpile() {
-                            // THINKME: Support PureScript as well!!!
-                            return src(srcGlob, {cwd: "src", sourcemaps: true})
-                                .pipe(transpileTypeScript("src/tsconfig.json"))
-                                .pipe(dest(destPath, {sourcemaps: "."}));
-                        });
-                    break;
-
-                default:
-                    tasks.push(
-                        function copyData() {
-                            return src(srcGlob, {cwd: "src"})
-                                .pipe(new ValidateJSON())
-                                .pipe(dest(destPath));
-                        });
-                }
+            switch (mod.type) {
+            case "script":
+                /* Special case: the script module often needs a
+                 * transpilation. */
+                tasks.push(
+                    function transpile() {
+                        // THINKME: Support PureScript as well!!!
+                        return src(srcGlobs, {cwd: "src", cwdbase: true, sourcemaps: true})
+                            .pipe(transpileTypeScript("src/tsconfig.json"))
+                            .pipe(dest(buildPath, {sourcemaps: "."}));
+                    });
+                break;
+            default:
+                tasks.push(
+                    function copyData() {
+                        return src(srcGlobs, {cwd: "src", cwdbase: true})
+                            .pipe(new ValidateJSON())
+                            .pipe(dest(buildPath));
+                    });
             }
         }
 

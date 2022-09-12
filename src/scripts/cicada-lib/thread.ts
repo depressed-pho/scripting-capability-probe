@@ -1,4 +1,3 @@
-import { console } from "./console";
 import { hasInstance } from "./has-instance";
 
 export class Thread {

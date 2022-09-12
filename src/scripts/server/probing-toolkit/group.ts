@@ -1,4 +1,3 @@
-import { console } from "cicada-lib/console";
 import { hasInstance } from "cicada-lib/has-instance";
 import * as Fmt from "cicada-lib/fmt-code";
 import { Probe } from "./probe";
