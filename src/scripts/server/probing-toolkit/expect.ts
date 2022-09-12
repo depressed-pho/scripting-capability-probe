@@ -11,21 +11,45 @@ export class ExpectationFailed extends Error {
     }
 }
 
+/** Create a callable object that calls `asFunc` when called, and invokes
+ * `asChain` when used as a language chain. */
+function makeHybrid<T, F1 extends (this: unknown, ...args: any[]) => any>(asFunc: F1, asChain: () => T): F1 & T {
+    return new Proxy(asFunc, {
+        apply(_targ: any, _this: any, args: Parameters<F1>): ReturnType<F1> {
+            return asFunc.apply(null, args);
+        },
+        get(_targ: any, key: PropertyKey): any {
+            const self = asChain();
+            const prop: any = (self as any)[key];
+            if (typeof prop === "function") {
+                // If the property is a function, we need to recover `this'
+                // or it won't work as a method.
+                return prop.bind(self);
+            }
+            else {
+                return prop;
+            }
+        }
+    });
+}
+
 export class Expectation {
     #val: any;
     #deep: boolean;
+    #include: boolean;
     #itself: boolean;
     #nested: boolean;
     #not: boolean;
     #own: boolean;
 
     public constructor(val: any) {
-        this.#val    = val;
-        this.#deep   = false;
-        this.#itself = false;
-        this.#nested = false;
-        this.#not    = false;
-        this.#own    = false;
+        this.#val     = val;
+        this.#deep    = false;
+        this.#include = false;
+        this.#itself  = false;
+        this.#nested  = false;
+        this.#not     = false;
+        this.#own     = false;
     }
 
     static #pretty(val: any): string {
@@ -135,23 +159,7 @@ export class Expectation {
         // object. The easiest and the most logical way to do the trick is
         // to create a proxy to `fn'. Note that the proxy cannot target
         // `this' because it would then be non-callable.
-        const self = this;
-        return new Proxy(fn, {
-            apply(_targ: any, _this: any, args: [ty: string, msg?: string]): Expectation {
-                return fn.apply(self, args);
-            },
-            get(_targ: any, key: PropertyKey): any {
-                const prop: any = (self as any)[key];
-                if (typeof prop === "function") {
-                    // If the property is a function, we need to recover
-                    // `this' or it won't work as a method.
-                    return prop.bind(self);
-                }
-                else {
-                    return prop;
-                }
-            }
-        }) as any;
+        return makeHybrid(fn, () => this);
     }
 
     /** Alias to {link a} */
@@ -245,6 +253,33 @@ export class Expectation {
         else {
             this.#nested = true;
             return this;
+        }
+    }
+
+    /** Assert that the target value is not a primitive and is
+     * extensible. */
+    public get extensible(): this {
+        if (this.#not) {
+            if (Object(this.#val) !== this.#val ||
+                !Object.isExtensible(this.#val)) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                    format("%s is expected not to be an extensible object.",
+                           Expectation.#pretty(this.#val)));
+            }
+        }
+        else {
+            if (Object(this.#val) === this.#val &&
+                Object.isExtensible(this.#val)) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                    format("%s is expected to be an extensible object.",
+                           Expectation.#pretty(this.#val)));
+            }
         }
     }
 
@@ -408,37 +443,50 @@ export class Expectation {
     /** Expect that a string value includes a given substring, an array,
      * Set, or WeakSet value includes a given iterable as a subset, a Map
      * or WeakMap value includes a given iterable as a submap, an object
-     * value includes a given object as a subset. */
-    public include(obj: any, msg?: string): this {
-        if (this.#not) {
-            if (!this.#include(obj)) {
-                return this;
+     * value includes a given object as a subset.
+     *
+     * `include` can also be used as a language chain, causing all {@link
+     * members} and {@link keys} assertions that follow in the chain to
+     * require the target to be a superset of the expected set, rather than
+     * an identical set. Note that {@link members} ignores duplicates in
+     * the subset when `include` is in effect.
+     */
+    public get include(): ((obj: any, msg?: string) => this) & this {
+        const fn = (obj: any, msg?: string): this => {
+            if (this.#not) {
+                if (!this.#includeImpl(obj)) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does include %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(obj)));
+                }
             }
             else {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s does include %s",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(obj)));
+                if (this.#includeImpl(obj)) {
+                    return this;
+                }
+                else {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does not include %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(obj)));
+                }
             }
-        }
-        else {
-            if (this.#include(obj)) {
-                return this;
-            }
-            else {
-                throw new ExpectationFailed(
-                    msg != null
-                        ? msg
-                        : format("%s does not include %s",
-                                 Expectation.#pretty(this.#val),
-                                 Expectation.#pretty(obj)));
-            }
-        }
+        };
+        return makeHybrid(fn, () => {
+            this.#include = true;
+            return this;
+        });
     }
 
-    #include(obj: any): boolean {
+    #includeImpl(obj: any): boolean {
         const ty = detailedTypeOf(this.#val);
         switch (ty) {
             case "string":
@@ -581,6 +629,71 @@ export class Expectation {
     /** Alias to {@include}. */
     public contains(obj: any, msg?: string): this {
         return this.include(obj, msg);
+    }
+
+    /** Expect that the target set (`Set` or `Array`) has the same
+     * elements as the given iterable object. */
+    public members(set: Iterable<any>, msg?: string): this {
+        if (this.#not) {
+            if (!this.#membersImpl(set)) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s is a superset of %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(set)));
+            }
+        }
+        else {
+            if (this.#membersImpl(set)) {
+                return this;
+            }
+            else {
+                throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s isn't a superset of %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(set)));
+            }
+        }
+    }
+
+    #membersImpl(set: Iterable<any>): boolean {
+        const superset = new Set(this.#val as any);
+
+        // Is `set' a subset of this.#val?
+        for (const elem of set) {
+            if (this.#deep) {
+                let found = false;
+                for (const e of superset) {
+                    if (deepEqual(e, elem)) {
+                        superset.delete(e);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return false;
+                }
+            }
+            else {
+                if (!superset.delete(elem)) {
+                    return false;
+                }
+            }
+        }
+
+        if (!this.#include) {
+            // Is `set' identical to this.#val?
+            return superset.size == 0;
+        }
+        else {
+            return true;
+        }
     }
 
     /** Expect that the value is found in the prototype chain of a given
@@ -910,9 +1023,28 @@ export class Expectation {
             }
         }
     }
+
+    /** Alias to {@link satisfy}. */
+    public satisfies(pred: (v: any) => boolean, msg?: string): this {
+        return this.satisfy(pred, msg);
+    }
+
+    public static fail(msg?: string): never {
+        throw new ExpectationFailed(
+            msg != null
+                ? msg
+                : "Expectation failed");
+    }
+}
+
+interface IExpect {
+    (val: any): Expectation;
+    fail(msg?: string): never;
 }
 
 /// Chai.js-like expectation API.
-export function expect(val: any): Expectation {
-    return new Expectation(val);
-}
+export const expect: IExpect = (() => {
+    const fn = (val: any) => new Expectation(val);
+    fn.fail = Expectation.fail;
+    return fn;
+})();

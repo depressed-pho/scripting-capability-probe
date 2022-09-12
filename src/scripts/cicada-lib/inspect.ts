@@ -1,4 +1,5 @@
 import * as PP from "./pprint";
+import { lazy } from "./lazy";
 
 export interface InspectOptions {
     indentationWidth?: number,
@@ -61,7 +62,7 @@ const builtinObjectNames: Set<string> =
 const TypedArray: Function =
     Object.getPrototypeOf(Int8Array);
 
-const boxedPrimConstructors: Set<Function> = (() => {
+const boxedPrimConstructors: Set<Function> = lazy(() => {
     /* The interpreter may not support all the known primitive types. That
      * is, we can't simply do "obj instanceof BigInt" if BigInt isn't
      * supported. */
@@ -77,7 +78,7 @@ const boxedPrimConstructors: Set<Function> = (() => {
               .filter(name => possibleNames.has(name) &&
                               typeof (globalThis as any)[name] === "function")
               .map(name => (globalThis as any)[name] as Function));
-})();
+});
 
 /* Object.hasOwn() is not available everywhere. This is an alternative
  * implementation. */
@@ -125,21 +126,23 @@ function styliseNoColour(token: PP.Doc, _type: TokenType): PP.Doc {
     return token;
 }
 
-const defaultStyles = new Map<TokenType, (token: PP.Doc) => PP.Doc>([
-    [TokenType.BigInt   , PP.yellow     ],
-    [TokenType.Boolean  , PP.yellow     ],
-    [TokenType.Date     , PP.lightPurple],
-    [TokenType.Function , PP.gold       ],
-    [TokenType.Name     , (d) => d      ], // Don't style them.
-    [TokenType.Null     , PP.bold       ],
-    [TokenType.Number   , PP.yellow     ],
-    [TokenType.RegExp   , PP.aqua       ],
-    [TokenType.Special  , PP.gray       ],
-    [TokenType.String   , PP.green      ],
-    [TokenType.Symbol   , PP.green      ],
-    [TokenType.Undefined, PP.gray       ],
-    [TokenType.Unknown  , PP.italicise  ]
-]);
+const defaultStyles = lazy(() => {
+    return new Map<TokenType, (token: PP.Doc) => PP.Doc>([
+        [TokenType.BigInt   , PP.yellow     ],
+        [TokenType.Boolean  , PP.yellow     ],
+        [TokenType.Date     , PP.lightPurple],
+        [TokenType.Function , PP.gold       ],
+        [TokenType.Name     , (d) => d      ], // Don't style them.
+        [TokenType.Null     , PP.bold       ],
+        [TokenType.Number   , PP.yellow     ],
+        [TokenType.RegExp   , PP.aqua       ],
+        [TokenType.Special  , PP.gray       ],
+        [TokenType.String   , PP.green      ],
+        [TokenType.Symbol   , PP.green      ],
+        [TokenType.Undefined, PP.gray       ],
+        [TokenType.Unknown  , PP.italicise  ]
+    ]);
+});
 function styliseWithColour(token: PP.Doc, type: TokenType): PP.Doc {
     const f = defaultStyles.get(type);
     return f ? f(token) : PP.italicise(token);
