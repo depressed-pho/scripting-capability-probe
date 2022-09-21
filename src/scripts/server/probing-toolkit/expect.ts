@@ -617,18 +617,18 @@ export class Expectation {
     }
 
     /** Alias to {@include}. */
-    public includes(obj: any, msg?: string): this {
-        return this.include(obj, msg);
+    public get includes(): ((obj: any, msg?: string) => this) & this {
+        return this.include;
     }
 
     /** Alias to {@include}. */
-    public contain(obj: any, msg?: string): this {
-        return this.include(obj, msg);
+    public get contain(): ((obj: any, msg?: string) => this) & this {
+        return this.include;
     }
 
     /** Alias to {@include}. */
-    public contains(obj: any, msg?: string): this {
-        return this.include(obj, msg);
+    public get contains(): ((obj: any, msg?: string) => this) & this {
+        return this.include;
     }
 
     /** Expect that the target set (`Set` or `Array`) has the same

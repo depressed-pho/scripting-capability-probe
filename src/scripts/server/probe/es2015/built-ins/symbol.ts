@@ -315,5 +315,11 @@ export default group("Symbol", [
             (c as any) == 0;
             expect(passed).to.equal(3);
         }),
+        probe("@@toStringTag", () => {
+            const obj = {
+                [Symbol.toStringTag]: "foo"
+            };
+            expect(String(obj)).to.equal("[object foo]");
+        }),
     ])
 ]);

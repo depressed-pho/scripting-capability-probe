@@ -8,6 +8,7 @@ import proxy from "./built-ins/proxy";
 import reflect from "./built-ins/reflect";
 import promise from "./built-ins/promise";
 import symbol from "./built-ins/symbol";
+import extensions from "./built-ins/extensions";
 
 export default group("Built-ins", [
     typedArrays,
@@ -18,5 +19,6 @@ export default group("Built-ins", [
     proxy,
     reflect,
     promise,
-    symbol
+    symbol,
+    extensions
 ]);
