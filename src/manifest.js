@@ -6,7 +6,7 @@ module.exports = {
     // Common properties shared by every package (optional).
     common: {
         // Override package.json "name" (optional).
-        name: "Bedrock Capability Probe",
+        name: "Scripting Capability Probe",
 
         // Override package.json "description" (optional).
         description: "Inspects the capability of the JavaScript engine that is accessible through the GameTest framework.",

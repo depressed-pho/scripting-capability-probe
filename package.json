@@ -1,5 +1,5 @@
 {
-  "name": "bedrock-capability-probe",
+  "name": "scripting-capability-probe",
   "version": "1.0.0",
   "description": "A Minecraft Bedrock addon that inspects the capability of the JavaScript engine that is accessible through the GameTest Framework.",
   "type": "commonjs",
@@ -13,19 +13,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/depressed-pho/bedrock-capability-probe.git"
+    "url": "git+https://github.com/depressed-pho/scripting-capability-probe.git"
   },
   "keywords": [
     "Minecraft",
     "Bedrock",
+    "Scripting",
     "Addon"
   ],
   "author": "PHO",
   "license": "CC0-1.0",
   "bugs": {
-    "url": "https://github.com/depressed-pho/bedrock-capability-probe/issues"
+    "url": "https://github.com/depressed-pho/scripting-capability-probe/issues"
   },
-  "homepage": "https://github.com/depressed-pho/bedrock-capability-probe#readme",
+  "homepage": "https://github.com/depressed-pho/scripting-capability-probe#readme",
   "engines": {
     "node": ">=18.7"
   },
