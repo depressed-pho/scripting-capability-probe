@@ -91,7 +91,12 @@ class SkinPackModule extends Module {}
 
 class Dependency {
     #init(depSrc) {
-        this.uuid    = depSrc.uuid;
+        if (depSrc.uuid != null) {
+            this.uuid = depSrc.uuid;
+        }
+        else {
+            this.moduleName = depSrc.moduleName;
+        }
         this.version = parseVer(depSrc.version);
     }
 
@@ -99,19 +104,19 @@ class Dependency {
         if (typeof depSrc === "string") {
             switch (depSrc) {
             case "mojang-gametest":
-                this.#init({uuid: "6f4b6893-1bb6-42fd-b458-7fa3d0c89616", version: "0.1.0"});
+                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
                 break;
             case "mojang-minecraft-server-admin":
-                this.#init({uuid: "53d7f2bf-bf9c-49c4-ad1f-7c803d947920", version: "1.0.0-beta"});
+                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
                 break;
             case "mojang-minecraft-ui":
-                this.#init({uuid: "2bd50a27-ab5f-4f40-a596-3641627c635e", version: "0.1.0"});
+                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
                 break;
             case "mojang-minecraft":
-                this.#init({uuid: "b26a4d4c-afdf-4690-88f8-931846312678", version: "0.1.0"});
+                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
                 break;
             case "mojang-net":
-                this.#init({uuid: "777b1798-13a6-401c-9cba-0cf17e31a81b", version: "1.0.0-beta"});
+                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
                 break;
             default:
                 throw Error(`Unknown builtin module: ${depSrc}`);
@@ -124,7 +129,9 @@ class Dependency {
 
     get manifest() {
         return {
-            uuid:    this.uuid,
+            ...(this.uuid != null
+                ? {uuid:        this.uuid      }
+                : {module_name: this.moduleName}),
             version: triplet(this.version)
         };
     }
