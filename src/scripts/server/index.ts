@@ -1,10 +1,23 @@
 import "cicada-lib/shims/console";
+import { system } from "cicada-lib/system";
 import { world } from "cicada-lib/world";
+import { BeforeWatchdogTerminateEvent,
+         WatchdogTerminateReason } from "cicada-lib/watchdog";
 import { ItemUseEvent } from "cicada-lib/entity";
 import { ItemStack } from "cicada-lib/item-stack";
 import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "cicada-lib/player";
 import { sessionManager } from "./player-session";
 import { ProbingThread } from "./probing-thread";
+
+system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
+    switch (ev.terminateReason) {
+        case WatchdogTerminateReason.stackOverflow:
+            /* There is a probe that intentionally causes a stack overflow. Do not
+             * terminate the server on that. */
+            ev.cancel();
+            break;
+    }
+});
 
 world.on("playerJoin", (ev: PlayerJoinEvent) => {
     const player = ev.player;

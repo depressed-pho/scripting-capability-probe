@@ -96,7 +96,7 @@ export class ScreenTitle {
      */
     public setTimes(fadeIn: number, stay: number, fadeOut: number): this {
         function secToTicks(sec: number): number {
-            return Math.floor(sec * 20);
+            return Math.floor(sec * MC.TicksPerSecond);
         }
         this.#player.raw.runCommand(
             `titleraw @s times ${secToTicks(fadeIn)} ${secToTicks(stay)} ${secToTicks(fadeOut)}`);
