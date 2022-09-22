@@ -37,7 +37,7 @@ export class ProbingThread extends Thread {
             catch (e) {
                 if (e instanceof ThreadCancellationRequested) {
                     console.log(ProbingThread.#line(1));
-                    console.log(`Cancelled after ${timer}.`);
+                    console.log("Cancelled after %i/%i probes (%s).", progBar.done, progBar.total, timer);
                     console.log(ProbingThread.#line(0));
 
                     player.title.setActionBar("Probing cancelled");
@@ -46,7 +46,7 @@ export class ProbingThread extends Thread {
             }
 
             console.log(ProbingThread.#line(1));
-            console.log(`Completed probing ${progBar.total} features after ${timer}.`);
+            console.log("Completed probing %s features after %s.", progBar.total, timer);
             console.log(ProbingThread.#line(0));
 
             player.title.setActionBar("Probing completed");

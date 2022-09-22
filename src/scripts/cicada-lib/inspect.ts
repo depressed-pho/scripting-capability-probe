@@ -788,7 +788,7 @@ function mkClassPrefix(func: Function, ctorName: string|null, tag: string|null):
     if (ctorName != null) {
         const proto = Object.getPrototypeOf(func);
         if (proto && proto.name) {
-            prefix = PP.spaceCat(prefix, PP.text("extends ${proto.name}"));
+            prefix = PP.spaceCat(prefix, PP.text(`extends ${proto.name}`));
         }
     }
     else {

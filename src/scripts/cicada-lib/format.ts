@@ -21,9 +21,12 @@ export function formatWithOptions(opts: InspectOptions, fmt: string, ...args: an
                         : matched;
                 case "d":
                 case "i":
+                    return args.length > 0
+                        ? String(Number(args.shift()))
+                        : matched;
                 case "s":
                     return args.length > 0
-                        ? stringify(args.shift())
+                        ? String(args.shift())
                         : matched;
                 default:
                     if (intWidth != null || intPrec != null) {
