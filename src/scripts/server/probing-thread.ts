@@ -25,8 +25,9 @@ export class ProbingThread extends Thread {
             console.log("Swing the wand again to cancel it.");
             console.log(ProbingThread.#line(1));
 
+            let numPassed: number;
             try {
-                yield* probeRoot.run(
+                numPassed = yield* probeRoot.run(
                     async () => {
                         player.title.setActionBar("Probing:\n" + progBar.toString());
                     },
@@ -43,10 +44,14 @@ export class ProbingThread extends Thread {
                     player.title.setActionBar("Probing cancelled");
                     throw e;
                 }
+                else {
+                    throw e;
+                }
             }
 
             console.log(ProbingThread.#line(1));
             console.log("Completed probing %s features after %s.", progBar.total, timer);
+            console.log("%i tests passed, %i failed.", numPassed, progBar.total - numPassed);
             console.log(ProbingThread.#line(0));
 
             player.title.setActionBar("Probing completed");

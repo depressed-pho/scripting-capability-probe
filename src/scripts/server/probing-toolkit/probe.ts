@@ -14,7 +14,10 @@ export class Probe {
         this.#worker = worker;
     }
 
-    public async *[Symbol.asyncIterator](): AsyncGenerator {
+    /** The generator returns (not yields) true if the test passes, or
+     * false otherwise.
+     */
+    public async *[Symbol.asyncIterator](): AsyncGenerator<unknown, boolean> {
         // The worker function may throw exceptions. Catch and treat them
         // as failure except for ThreadCancellationRequested which should
         // only be caught by the thread root.
@@ -41,6 +44,7 @@ export class Probe {
             else {
                 console.log("✓ " + this.#title);
             }
+            return true;
         }
         catch (e) {
             if (e instanceof ThreadCancellationRequested) {
@@ -62,6 +66,7 @@ export class Probe {
                 if (showFailureDetails) {
                     console.log(e);
                 }
+                return false;
             }
         }
         finally {

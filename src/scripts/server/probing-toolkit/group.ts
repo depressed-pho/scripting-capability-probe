@@ -55,33 +55,41 @@ export class Group {
         }
     }
 
+    /** The generator returns the number of passed tests. */
     public async *run(beforeProbe?: () => Promise<unknown>,
                       afterProbe?:  () => Promise<unknown>,
-                      groupLevel: number = 0): AsyncGenerator {
+                      groupLevel: number = 0): AsyncGenerator<unknown, number> {
         this.#enter(groupLevel);
         try {
+            let numPassed = 0;
             for (const child of this.#children) {
                 if (child instanceof Group) {
-                    yield* child.run(beforeProbe, afterProbe, groupLevel + 1);
+                    // "numPassed += yield* ..." triggers an internal error
+                    // on QuickJS. Definitely an interpreter bug.
+                    const n = yield* child.run(beforeProbe, afterProbe, groupLevel + 1);
+                    numPassed += n;
                 }
                 else {
                     console.assert(child instanceof Probe);
                     if (beforeProbe) {
                         await beforeProbe();
                     }
-                    yield* child;
+                    if (yield* child) {
+                        numPassed++;
+                    }
                     if (afterProbe) {
                         await afterProbe();
                     }
                 }
             }
+            return numPassed;
         }
         finally {
             this.#leave();
         }
     }
 
-    public [Symbol.asyncIterator](): AsyncGenerator {
+    public [Symbol.asyncIterator](): AsyncGenerator<unknown, number> {
         return this.run();
     }
 
