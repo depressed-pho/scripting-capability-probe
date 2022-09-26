@@ -149,5 +149,97 @@ export default group("Subclassing", [
                 expect(p1.then()).to.not.equal(p1);
             });
         }),
+        probe("correct prototype chain", () => {
+            class P<T> extends Promise<T> {}
+            const p = new P((resolve) => { resolve("foo") });
+            expect(p).to.be.an.instanceOf(P);
+            expect(p).to.be.an.instanceOf(Promise);
+            expect(Object.getPrototypeOf(P)).to.equal(Promise);
+        }),
+        probe("Promise.all", async () => {
+            class P<T> extends Promise<T> {}
+            const fulfills = P.all([
+                new Promise((resolve) => resolve("foo")),
+                new Promise((resolve) => resolve("bar"))
+            ]);
+            const rejects = P.all([
+                new Promise((_, reject) => reject("baz")),
+                new Promise((_, reject) => reject("qux"))
+            ]);
+            expect(fulfills).to.be.an.instanceOf(P);
+            expect(await fulfills).to.have.members(["foo", "bar"]);
+            expect(await rejects.catch(x => x)).to.satisfy((str: string) => {
+                return str === "baz" || str === "qux";
+            });
+        }),
+        probe("Promise.race", async () => {
+            class P<T> extends Promise<T> {}
+            const fulfills = P.race([
+                new Promise((resolve) => resolve("foo")),
+                new Promise((resolve) => resolve("bar"))
+            ]);
+            const rejects = P.race([
+                new Promise((_, reject) => reject("baz")),
+                new Promise((_, reject) => reject("qux"))
+            ]);
+            expect(fulfills).to.be.an.instanceOf(P);
+            expect(await fulfills).to.satisfy((str: string) => {
+                return str === "foo" || str === "bar";
+            });
+            expect(await rejects.catch(x => x)).to.satisfy((str: string) => {
+                return str === "baz" || str === "qux";
+            });
+        })
+    ]),
+    group("miscellaneous subclassables", [
+        probe("Boolean is subclassable", () => {
+            class B extends Boolean {}
+            const b = new B(true);
+            expect(b).to.be.an.instanceOf(B);
+            expect(b).to.be.an.instanceOf(Boolean);
+            expect(b).to.satisfy(x => x == true);
+        }),
+        probe("Number is subclassable", () => {
+            class N extends Number {}
+            const n = new N(6);
+            expect(n).to.be.an.instanceOf(N);
+            expect(n).to.be.an.instanceOf(Number);
+            expect(n).to.satisfy(x => x == 6);
+        }),
+        probe("String is subclassable", () => {
+            class S extends String {}
+            const s = new S("foo");
+            expect(s).to.be.an.instanceOf(S);
+            expect(s).to.be.an.instanceOf(String);
+            expect(s).to.satisfy(x => x == "foo");
+            expect(s).to.have.a.property(0, "f");
+            expect(s).to.have.lengthOf(3);
+        }),
+        probe("Error is subclassable", () => {
+            class E extends Error {}
+            const e = new E();
+            expect(e).to.be.an.instanceOf(E);
+            expect(e).to.be.an.instanceOf(Error);
+            expect(Object.prototype.toString.call(e)).to.equal("[object Error]");
+        }),
+        probe("Map is subclassable", () => {
+            class M extends Map {}
+            const m = new M();
+            const k = {};
+            m.set(k, 123);
+            expect(m).to.be.an.instanceOf(M);
+            expect(m).to.be.an.instanceOf(Map);
+            expect(m.has(k)).to.be.true;
+            expect(m.get(k)).to.equal(123);
+        }),
+        probe("Set is subclassable", () => {
+            class S extends Set {}
+            const s = new S();
+            s.add(123);
+            s.add(123);
+            expect(s).to.be.an.instanceOf(S);
+            expect(s).to.be.an.instanceOf(Set);
+            expect(s.has(123)).to.be.true;
+        })
     ])
 ]);

@@ -50,8 +50,8 @@ export class ProbingThread extends Thread {
             }
 
             console.log(ProbingThread.#line(1));
-            console.log("Completed probing %s features after %s.", progBar.total, timer);
-            console.log("%i tests passed, %i failed.", numPassed, progBar.total - numPassed);
+            console.log("Completed probing features after %s, of which %i tests passed (%i failed).",
+                        timer, numPassed, progBar.total - numPassed);
             console.log(ProbingThread.#line(0));
 
             player.title.setActionBar("Probing completed");
