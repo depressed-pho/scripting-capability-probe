@@ -37,7 +37,9 @@ export class World extends EventEmitter {
                 try {
                     // Strange... this works even if the only player
                     // resides in the Nether.
-                    this.#world.getDimension("overworld").runCommand("testfor @a");
+                    this.#world
+                        .getDimension(MC.MinecraftDimensionTypes.overworld)
+                        .runCommand("testfor @a"); // would fail if no players exist.
                     this.#isReady = true;
                 }
                 catch (e) {}

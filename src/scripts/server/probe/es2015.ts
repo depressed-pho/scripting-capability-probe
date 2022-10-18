@@ -6,6 +6,7 @@ import functions from "./es2015/functions";
 import builtins from "./es2015/built-ins";
 import subclassing from "./es2015/subclassing";
 import misc from "./es2015/misc";
+import annexB from "./es2015/annex-B";
 
 export default group("ES2015 Support", [
     optimisation,
@@ -14,5 +15,6 @@ export default group("ES2015 Support", [
     functions,
     builtins,
     subclassing,
-    misc
+    misc,
+    annexB
 ]);

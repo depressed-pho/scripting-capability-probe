@@ -41,15 +41,17 @@ export class Expectation {
     #nested: boolean;
     #not: boolean;
     #own: boolean;
+    #enumerable: boolean;
 
     public constructor(val: any) {
-        this.#val     = val;
-        this.#deep    = false;
-        this.#include = false;
-        this.#itself  = false;
-        this.#nested  = false;
-        this.#not     = false;
-        this.#own     = false;
+        this.#val        = val;
+        this.#deep       = false;
+        this.#include    = false;
+        this.#itself     = false;
+        this.#nested     = false;
+        this.#not        = false;
+        this.#own        = false;
+        this.#enumerable = false;
     }
 
     static #pretty(val: any): string {
@@ -232,6 +234,38 @@ export class Expectation {
         return this.equal(val, msg);
     }
 
+    /** Assert that the value is a number or a date greater than the given
+     * number or date. */
+    public above(val: any, msg?: string): this {
+        return this.#order((a: any, b: any) => a < b, "greater than", val, msg);
+    }
+
+    #order(cmp: (a: any, b: any) => boolean, meaning: string, val: any, msg?: string): this {
+        if (this.#not) {
+            if (cmp(this.#val, val)) {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s is unexpectedly %s %s",
+                                 Expectation.#pretty(this.#val),
+                                 meaning,
+                                 Expectation.#pretty(val)));
+            }
+        }
+        else {
+            if (!cmp(this.#val, val)) {
+                throw new ExpectationFailed(
+                    msg != null
+                        ? msg
+                        : format("%s isn't %s %s",
+                                 Expectation.#pretty(this.#val),
+                                 meaning,
+                                 Expectation.#pretty(val)));
+            }
+        }
+        return this;
+    }
+
     /** Make subsequent calls of {@link property} search for only own properties
      * of the value, ignoring their inherited ones. */
     public get own(): this {
@@ -242,6 +276,14 @@ export class Expectation {
             this.#own = true;
             return this;
         }
+    }
+
+    /** Make subsequent calls of {@link property} search for only *own*
+     * enumerable properties of the value. This implies {@link own}. */
+    public get enumerable(): this {
+        this.own;
+        this.#enumerable = true;
+        return this;
     }
 
     /** Make subsequent calls of {@link property} accept dot- and bracket-
@@ -361,7 +403,30 @@ export class Expectation {
                              Expectation.#pretty(this.#val)));
         }
 
-        if (this.#own) {
+        if (this.#enumerable) {
+            if (this.#not) {
+                if (Object.prototype.propertyIsEnumerable.call(this.#val, key)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does have its own enumerable property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
+            }
+            else {
+                if (!Object.prototype.propertyIsEnumerable.call(this.#val, key)) {
+                    throw new ExpectationFailed(
+                        msg != null
+                            ? msg
+                            : format("%s does not have its own enumerable property %s",
+                                     Expectation.#pretty(this.#val),
+                                     Expectation.#pretty(key)));
+                }
+            }
+            this.#val = this.#val[key];
+        }
+        else if (this.#own) {
             if (this.#not) {
                 if (Object.prototype.hasOwnProperty.call(this.#val, key)) {
                     throw new ExpectationFailed(

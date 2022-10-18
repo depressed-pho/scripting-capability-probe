@@ -12,8 +12,8 @@ import { ProbingThread } from "./probing-thread";
 system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
     switch (ev.terminateReason) {
         case WatchdogTerminateReason.stackOverflow:
-            /* There is a probe that intentionally causes a stack overflow. Do not
-             * terminate the server on that. */
+            /* There is a probe that can knowingly cause a stack
+             * overflow. Do not terminate the server on that. */
             ev.cancel();
             break;
     }
