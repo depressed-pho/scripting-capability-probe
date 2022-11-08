@@ -31,12 +31,6 @@ export class Player extends Entity {
     public get title(): ScreenTitle {
         return new ScreenTitle(this);
     }
-
-    /* Workaround for
-     * https://github.com/MicrosoftDocs/minecraft-creator/issues/353 */
-    static [Symbol.hasInstance](entity: Entity): boolean {
-        return entity.typeId === "minecraft:player";
-    }
 }
 
 export interface PlayerJoinEvent {

@@ -128,6 +128,7 @@ class RewriteTypescriptImports extends Transform {
     }
 
     #rewritePath(origPath, sourcePath) {
+        // Search it first from the alias table.
         for (const [from, to] of Object.entries(this.#paths)) {
             if (origPath === from) {
                 // Exact match
@@ -135,9 +136,10 @@ class RewriteTypescriptImports extends Transform {
                     if (candidate.endsWith("*")) {
                         throw new Error(`Invalid path candidate: ${candidate}`);
                     }
-                    const base = path.resolve(this.#baseUrl, candidate);
-                    if (fs.existsSync(base) || fs.existsSync(base + ".ts")) {
-                        return path.relative(path.dirname(sourcePath), base);
+                    const base     = path.resolve(this.#baseUrl, candidate);
+                    const resolved = this.#resolve(origPath, sourcePath, base);
+                    if (resolved != null) {
+                        return resolved;
                     }
                 }
                 throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
@@ -150,20 +152,50 @@ class RewriteTypescriptImports extends Transform {
                     if (!candidate.endsWith("*")) {
                         throw new Error(`Invalid path candidate: ${candidate}`);
                     }
-                    const stem = candidate.slice(0, -1);
-                    const base = path.resolve(this.#baseUrl, stem + wildcarded);
-                    if (fs.existsSync(base) || fs.existsSync(base + ".ts")) {
-                        return path.relative(path.dirname(sourcePath), base);
-                    }
-                    else if (fs.existsSync(base + ".d.ts")) {
-                        // No need to rewrite this.
-                        return origPath;
+                    const stem     = candidate.slice(0, -1);
+                    const base     = path.resolve(this.#baseUrl, stem + wildcarded);
+                    const resolved = this.#resolve(origPath, sourcePath, base);
+                    if (resolved != null) {
+                        return resolved;
                     }
                 }
                 throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
             }
         }
-        return origPath;
+        // Not found in the alias table. Probably a relative path?
+        const base     = path.resolve(path.dirname(sourcePath), origPath);
+        const resolved = this.#resolve(origPath, sourcePath, base);
+        if (resolved != null) {
+            return resolved;
+        }
+        else {
+            throw new Error(`File ${origPath} not found in ${path.dirname(base)}`);
+        }
+    }
+
+    #resolve(origPath, sourcePath, base) {
+        function toRelative(from, to) {
+            const relative = path.relative(from, to);
+            if (relative.startsWith("./") || relative.startsWith("../")) {
+                return relative;
+            }
+            else {
+                return "./" + relative;
+            }
+        }
+        if (fs.existsSync(base)) {
+            return toRelative(path.dirname(sourcePath), base);
+        }
+        else if (fs.existsSync(base + ".d.ts")) {
+            // No need to rewrite this.
+            return origPath;
+        }
+        else if (fs.existsSync(base + ".ts")) {
+            return toRelative(path.dirname(sourcePath), base + ".js");
+        }
+        else {
+            return null;
+        }
     }
 }
 

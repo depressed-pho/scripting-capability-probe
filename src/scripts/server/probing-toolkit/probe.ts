@@ -1,4 +1,3 @@
-import { hasInstance } from "cicada-lib/has-instance";
 import { ThreadCancellationRequested } from "cicada-lib/thread";
 import * as Fmt from "cicada-lib/fmt-code";
 import { useFormatCodes, showFailureDetails } from "./config";
@@ -74,12 +73,6 @@ export class Probe {
             // it now, or we wouldn't be able to cancel the thread.
             yield;
         }
-    }
-
-    /* Workaround for
-     * https://github.com/MicrosoftDocs/minecraft-creator/issues/353 */
-    static [Symbol.hasInstance](obj: any): boolean {
-        return hasInstance(obj, this);
     }
 }
 

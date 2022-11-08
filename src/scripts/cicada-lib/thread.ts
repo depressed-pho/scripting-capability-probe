@@ -1,5 +1,3 @@
-import { hasInstance } from "./has-instance";
-
 export class Thread {
     readonly #task: AsyncGenerator;
     readonly id: number;
@@ -120,11 +118,5 @@ export class Thread {
 export class ThreadCancellationRequested extends Error {
     public constructor(message?: string, options?: ErrorOptions) {
         super(message, options);
-    }
-
-    /* Workaround for
-     * https://github.com/MicrosoftDocs/minecraft-creator/issues/353 */
-    static [Symbol.hasInstance](obj: any): boolean {
-        return hasInstance(obj, this);
     }
 }

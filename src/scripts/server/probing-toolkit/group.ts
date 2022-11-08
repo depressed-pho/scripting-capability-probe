@@ -1,4 +1,3 @@
-import { hasInstance } from "cicada-lib/has-instance";
 import * as Fmt from "cicada-lib/fmt-code";
 import { Probe } from "./probe";
 import { useFormatCodes } from "./config";
@@ -91,12 +90,6 @@ export class Group {
 
     public [Symbol.asyncIterator](): AsyncGenerator<unknown, number> {
         return this.run();
-    }
-
-    /* Workaround for
-     * https://github.com/MicrosoftDocs/minecraft-creator/issues/353 */
-    static [Symbol.hasInstance](obj: any): boolean {
-        return hasInstance(obj, this);
     }
 }
 
