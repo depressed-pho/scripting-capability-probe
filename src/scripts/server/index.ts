@@ -25,7 +25,7 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */
-    if (!player.inventory.some(item => item.id == "capprobe:wand_of_probing")) {
+    if (!player.inventory.some(item => item.typeId == "capprobe:wand_of_probing")) {
         const wand = new ItemStack("capprobe:wand_of_probing", 1);
         wand.lore = ["Swing this in the air to",
                      "probe the nature of the world."];

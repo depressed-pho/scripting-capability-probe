@@ -132,7 +132,7 @@ class RewriteTypescriptImports extends Transform {
             if (origPath === from) {
                 // Exact match
                 for (const candidate of to) {
-                    if (candidate.endsWith("/*")) {
+                    if (candidate.endsWith("*")) {
                         throw new Error(`Invalid path candidate: ${candidate}`);
                     }
                     const base = path.resolve(this.#baseUrl, candidate);
@@ -142,18 +142,22 @@ class RewriteTypescriptImports extends Transform {
                 }
                 throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
             }
-            else if (from.endsWith("/*") && origPath.startsWith(from.slice(0, -1))) {
+            else if (from.endsWith("*") && origPath.startsWith(from.slice(0, -1))) {
                 // Wildcard match
                 const wildcarded = origPath.slice(from.length - 1);
 
                 for (const candidate of to) {
-                    if (!candidate.endsWith("/*")) {
+                    if (!candidate.endsWith("*")) {
                         throw new Error(`Invalid path candidate: ${candidate}`);
                     }
                     const stem = candidate.slice(0, -1);
-                    const base = path.resolve(this.#baseUrl, stem, wildcarded);
+                    const base = path.resolve(this.#baseUrl, stem + wildcarded);
                     if (fs.existsSync(base) || fs.existsSync(base + ".ts")) {
                         return path.relative(path.dirname(sourcePath), base);
+                    }
+                    else if (fs.existsSync(base + ".d.ts")) {
+                        // No need to rewrite this.
+                        return origPath;
                     }
                 }
                 throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);

@@ -1,4 +1,4 @@
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 export class ItemEnchants {
     readonly #itemEnchants: MC.ItemEnchantsComponent;

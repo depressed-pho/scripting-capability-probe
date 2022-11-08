@@ -11,10 +11,13 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "strict": true,
-        "baseUrl": "src/scripts",
+        "baseUrl": ".",
         "paths": {
+            "@minecraft/*": [
+                "./types/minecraft__*"
+            ],
             "cicada-lib/*": [
-                "cicada-lib/*"
+                "./src/scripts/cicada-lib/*"
             ]
         }
     }

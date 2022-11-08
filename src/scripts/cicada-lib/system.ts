@@ -1,6 +1,6 @@
 import { EventEmitter } from "./event-emitter"
 import { BeforeWatchdogTerminateEvent } from "./watchdog";
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 export class System extends EventEmitter {
     readonly #system: MC.System;

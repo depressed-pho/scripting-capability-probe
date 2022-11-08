@@ -90,41 +90,14 @@ class WorldTemplateModule extends Module {}
 class SkinPackModule extends Module {}
 
 class Dependency {
-    #init(depSrc) {
+    constructor(depSrc) {
         if (depSrc.uuid != null) {
             this.uuid = depSrc.uuid;
         }
         else {
-            this.moduleName = depSrc.moduleName;
+            this.moduleName = depSrc.module_name;
         }
         this.version = parseVer(depSrc.version);
-    }
-
-    constructor(depSrc) {
-        if (typeof depSrc === "string") {
-            switch (depSrc) {
-            case "mojang-gametest":
-                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
-                break;
-            case "mojang-minecraft-server-admin":
-                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
-                break;
-            case "mojang-minecraft-ui":
-                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
-                break;
-            case "mojang-minecraft":
-                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
-                break;
-            case "mojang-net":
-                this.#init({moduleName: depSrc, version: "1.0.0-beta"});
-                break;
-            default:
-                throw Error(`Unknown builtin module: ${depSrc}`);
-            }
-        }
-        else {
-            this.#init(depSrc);
-        }
     }
 
     get manifest() {
@@ -132,32 +105,7 @@ class Dependency {
             ...(this.uuid != null
                 ? {uuid:        this.uuid      }
                 : {module_name: this.moduleName}),
-            version: triplet(this.version)
-        };
-    }
-}
-
-class Capabilities {
-    constructor(capSrc = {}) {
-        this.experimentalCustomUI = capSrc.experimental_custom_ui;
-        this.chemistry            = capSrc.chemistry;
-        this.raytraced            = capSrc.raytraced;
-    }
-
-    get manifest() {
-        return {
-            ...( this.experimentalCustomUI != null
-                 ? { experimental_custom_ui: this.experimental_custom_ui }
-                 : {}
-               ),
-            ...( this.chemistry != null
-                 ? { chemistry: this.chemistry }
-                 : {}
-               ),
-            ...( this.raytraced != null
-                 ? { raytraced: this.raytraced }
-                 : {}
-               )
+            version: this.version.toString()
         };
     }
 }
@@ -231,11 +179,26 @@ class Pack {
             return Module.create(merge.recursive(true, modDefaults, modSrc));
         });
 
-        this.dependencies = (packSrc.dependencies || []).map(depSrc => {
-            return new Dependency(depSrc);
-        });
+        // "dependencies" can either be an array or an object.
+        this.dependencies = (() => {
+            if (!packSrc.dependencies) {
+                return [];
+            }
+            else if (typeof packSrc.dependencies === "object") {
+                // An object is interpreted as {moduleName: version} pairs.
+                return Object.entries(packSrc.dependencies).map(([name, version]) => {
+                    return new Dependency({
+                        module_name: name,
+                        version
+                    });
+                });
+            }
+            else {
+                return packSrc.dependencies.map(depSrc => new Dependency(depSrc));
+            }
+        })();
 
-        this.capabilities = new Capabilities(packSrc.capabilities);
+        this.capabilities = packSrc.capabilities ?? [];
         this.metadata     = new Metadata(packSrc.metadata);
 
         for (const mod of this.modules) {
@@ -329,8 +292,8 @@ class Pack {
                  ? { dependencies: this.dependencies.map(d => d.manifest) }
                  : {}
                ),
-            ...( Object.keys(this.capabilities.manifest).length > 0
-                 ? { capabilities: this.capabilities.manifest }
+            ...( this.capabilities.length > 0
+                 ? { capabilities: this.capabilities }
                  : {}
                ),
             ...( Object.keys(this.metadata.manifest).length > 0
@@ -459,7 +422,6 @@ module.exports = {
     InterfaceModule,
     WorldTemplateModule,
     Dependency,
-    Capabilities,
     Metadata,
     Pack,
     Project

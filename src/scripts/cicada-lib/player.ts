@@ -1,8 +1,8 @@
 import { Entity } from "./entity";
 import { EntityInventory } from "./entity/inventory";
 import { RawText } from "./raw-text";
-export { PlayerLeaveEvent } from "mojang-minecraft";
-import * as MC from "mojang-minecraft";
+export { PlayerLeaveEvent } from "@minecraft/server";
+import * as MC from "@minecraft/server";
 
 export class Player extends Entity {
     readonly #player: MC.Player;
@@ -35,7 +35,7 @@ export class Player extends Entity {
     /* Workaround for
      * https://github.com/MicrosoftDocs/minecraft-creator/issues/353 */
     static [Symbol.hasInstance](entity: Entity): boolean {
-        return entity.id === "minecraft:player";
+        return entity.typeId === "minecraft:player";
     }
 }
 

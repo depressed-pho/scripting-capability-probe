@@ -1,5 +1,5 @@
-import { WatchdogTerminateReason } from "mojang-minecraft";
-import * as MC from "mojang-minecraft";
+import { WatchdogTerminateReason } from "@minecraft/server";
+import * as MC from "@minecraft/server";
 
 export { WatchdogTerminateReason };
 

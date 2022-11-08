@@ -1,5 +1,5 @@
 import { ItemEnchants } from "./enchantment";
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 export class ItemStack {
     readonly #itemStack: MC.ItemStack;
@@ -44,8 +44,8 @@ export class ItemStack {
         this.#itemStack.data = n;
     }
 
-    get id(): string {
-        return this.#itemStack.id;
+    get typeId(): string {
+        return this.#itemStack.typeId;
     }
 
     get lore(): string[] {

@@ -2,7 +2,7 @@ import { EventEmitter, EventName } from "./event-emitter"
 import { Entity, ItemUseEvent } from "./entity";
 import { ItemStack } from "./item-stack";
 import { Player, PlayerJoinEvent } from "./player"
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 interface Event {
     name: EventName,
@@ -12,6 +12,7 @@ interface Event {
 export class World extends EventEmitter {
     readonly #world: MC.World;
     #isReady: boolean;
+    //#readinessProbe: number|null; // runScheduleId
     #pendingEvents: Event[];
 
     /** The constructor is public only because of a language
@@ -19,9 +20,10 @@ export class World extends EventEmitter {
     public constructor(rawWorld: MC.World) {
         super();
 
-        this.#world         = rawWorld;
-        this.#isReady       = false;
-        this.#pendingEvents = [];
+        this.#world          = rawWorld;
+        this.#isReady        = false;
+        //this.#readinessProbe = null;
+        this.#pendingEvents  = [];
 
         this.#glueEvents();
     }
@@ -32,7 +34,7 @@ export class World extends EventEmitter {
          * it's ready. This is strange and is very inconvenient but is
          * apparently an intended behaviour.
          */
-        this.#world.events.tick.subscribe(() => {
+        const onTick = () => {
             if (!this.#isReady) {
                 try {
                     // Strange... this works even if the only player
@@ -41,6 +43,7 @@ export class World extends EventEmitter {
                         .getDimension(MC.MinecraftDimensionTypes.overworld)
                         .runCommand("testfor @a"); // would fail if no players exist.
                     this.#isReady = true;
+
                 }
                 catch (e) {}
 
@@ -51,9 +54,16 @@ export class World extends EventEmitter {
                         this.emit(ev.name, ev.event);
                     }
                     this.#pendingEvents = [];
+
+                    //MC.system.clearRunSchedule(this.#readinessProbe!);
+                    //this.#readinessProbe = null;
+                }
+                else {
+                    MC.system.run(onTick);
                 }
             }
-        });
+        };
+        MC.system.run(onTick);
 
         this.#world.events.playerJoin.subscribe(rawEv => {
             const ev: PlayerJoinEvent = { player: new Player(rawEv.player) };

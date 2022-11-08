@@ -1,4 +1,4 @@
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 /** Return a promise which will be resolved after *at least* a given
  * fractional number of seconds have elapsed. The promise will never be
@@ -19,7 +19,8 @@ interface Timeout {
 }
 const timeoutMap = new Map<TimeoutID, Timeout>();
 let nextTimeoutID = 0;
-let isListeningOnTicks = false;
+let isScheduled = false;
+//let runScheduleId: number|null = null;
 
 function mkHandler(arg0: string|Function, ...args: any[]): (() => unknown) {
     return typeof arg0 === "string"
@@ -46,17 +47,20 @@ function onWorldTick() {
 }
 
 function listenOnTicks(): void {
-    if (!isListeningOnTicks) {
-        MC.world.events.tick.subscribe(onWorldTick);
-        isListeningOnTicks = true;
+    if (!isScheduled) {
+        MC.system.run(onWorldTick);
     }
 }
 
 function unlistenOnTicks(): void {
-    if (isListeningOnTicks) {
-        MC.world.events.tick.unsubscribe(onWorldTick);
-        isListeningOnTicks = false;
+    // Do nothing for now. @minecraft/server-1.0.0 doesn't have
+    // System.prototype.clearRunSchedule.
+    /*
+    if (runScheduleId != null) {
+        MC.system.clearRunSchedule(runScheduleId);
+        runScheduleId = null;
     }
+    */
 }
 
 /** A low-level implementation of the standard setTimeout() function. This

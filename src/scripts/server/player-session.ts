@@ -17,6 +17,8 @@ export class Session {
 }
 
 export class SessionManager {
+    /** A map from player name to Session. Can't use player UUID because
+     * PlayerLeaveEvent doesn't have one. */
     readonly #sessions: Map<string, Session>;
 
     /** Do not call this directly. */

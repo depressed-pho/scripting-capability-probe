@@ -27,7 +27,8 @@ exports.install =
 exports.watch = function() {
     watch([
         "package.json",
-        "src/**"
+        "src/**",
+        "types/*"
     ], {ignoreInitial: false}, exports.install);
 };
 

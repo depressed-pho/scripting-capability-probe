@@ -1,5 +1,5 @@
 import { ItemStack } from "./item-stack";
-import * as MC from "mojang-minecraft";
+import * as MC from "@minecraft/server";
 
 export class Container implements Iterable<ItemStack> {
     readonly #container: MC.Container;

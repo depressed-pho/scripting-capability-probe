@@ -48,11 +48,12 @@ module.exports = {
             ],
 
             // Optional
-            dependencies: [
-                // A short-hand for depending on mojang-minecraft, the
-                // Minecraft API.
-                "mojang-minecraft"
-            ]
+            dependencies: {
+                "@minecraft/server": "1.0.0-beta"
+            },
+
+            // Optional
+            capabilities: ["script_eval"]
         }
     ]
 };
