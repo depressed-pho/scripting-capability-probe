@@ -394,6 +394,12 @@ function inspectObject(obj: any, ctx: Context): PP.Doc {
         braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
         props     = getOwnProperties(obj, ctx);
     }
+    else if ("WeakRef" in globalThis && obj instanceof WeakRef) {
+        const prefix = PP.beside(mkPrefix(ctorName, tag, "WeakRef"), PP.space);
+        inspector = inspectWeakRef;
+        braces    = [PP.beside(prefix, PP.lbrace), PP.rbrace];
+        props     = getOwnProperties(obj, ctx);
+    }
     else if (obj.constructor != null && boxedPrimConstructors.has(obj.constructor)) {
         const prefix = mkBoxedPrimPrefix(ctorName!, tag);
         const base   = PP.spaceCat(prefix, inspectValue(valueOf(obj.constructor, obj), ctx));
@@ -582,6 +588,20 @@ function inspectMap(map: Map<any, any>, ctx: Context): PP.Doc[] {
         elems.push(remainingText(numHidden));
     }
     return elems;
+}
+
+function inspectWeakRef(ref: WeakRef<any>, ctx: Context): PP.Doc[] {
+    const target = ref.deref();
+    if (target === undefined) {
+        return [
+            ctx.stylise(
+                PP.text("<Object already reclaimed>"),
+                TokenType.Undefined)
+        ];
+    }
+    else {
+        return [inspectValue(target, ctx)];
+    }
 }
 
 function inspectProperty(obj: any, key: PropertyKey, desc: PropertyDescriptor,
