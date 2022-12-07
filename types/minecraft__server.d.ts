@@ -15268,7 +15268,7 @@ export interface RawMessage {
     /**
      * A list of text objects used to build a message.
      */
-    rawtext: RawMessage | string[];
+    rawtext?: RawMessage | string[];
     /**
      * Contains plain text to display directly. Only valid when
      * used as a sub member in a parent _rawtext_ or _with_ member.
@@ -15284,7 +15284,7 @@ export interface RawMessage {
      * values in the _translate_ text. Ignored when _translate_ is
      * not present.
      */
-    with: RawMessage | string[];
+    with?: RawMessage | string[];
 }
 /**
  * Contains a description of a vector.
