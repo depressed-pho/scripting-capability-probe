@@ -29,7 +29,7 @@ export class ProbingThread extends Thread {
             try {
                 numPassed = yield* probeRoot.run(
                     async () => {
-                        player.title.setActionBar("Probing:\n" + progBar.toString());
+                        player.onScreenDisplay.setActionBar("Probing:\n" + progBar.toString());
                     },
                     async () => {
                         progBar.done++;
@@ -41,7 +41,7 @@ export class ProbingThread extends Thread {
                     console.log("Cancelled after %i/%i probes (%s).", progBar.done, progBar.total, timer);
                     console.log(ProbingThread.#line(0));
 
-                    player.title.setActionBar("Probing cancelled");
+                    player.onScreenDisplay.setActionBar("Probing cancelled");
                     throw e;
                 }
                 else {
@@ -54,7 +54,7 @@ export class ProbingThread extends Thread {
                         timer, numPassed, progBar.total - numPassed);
             console.log(ProbingThread.#line(0));
 
-            player.title.setActionBar("Probing completed");
+            player.onScreenDisplay.setActionBar("Probing completed");
         });
     }
 

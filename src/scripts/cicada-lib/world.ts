@@ -1,7 +1,7 @@
 import { EventEmitter, EventName } from "./event-emitter"
 import { Entity, ItemUseEvent } from "./entity";
 import { ItemStack } from "./item-stack";
-import { Player, PlayerJoinEvent } from "./player"
+import { Player, PlayerSpawnEvent } from "./player"
 import * as MC from "@minecraft/server";
 
 interface Event {
@@ -12,7 +12,7 @@ interface Event {
 export class World extends EventEmitter {
     readonly #world: MC.World;
     #isReady: boolean;
-    //#readinessProbe: number|null; // runScheduleId
+    #readinessProbe: number|null; // runScheduleId
     #pendingEvents: Event[];
 
     /** The constructor is public only because of a language
@@ -22,7 +22,7 @@ export class World extends EventEmitter {
 
         this.#world          = rawWorld;
         this.#isReady        = false;
-        //this.#readinessProbe = null;
+        this.#readinessProbe = null;
         this.#pendingEvents  = [];
 
         this.#glueEvents();
@@ -32,22 +32,16 @@ export class World extends EventEmitter {
         /* The game starts ticking the world even before it's fully
          * loaded. Players can even join it (and possibly leave it) before
          * it's ready. This is strange and is very inconvenient but is
-         * apparently an intended behaviour.
+         * apparently an intended behaviour. THINKME: Maybe the upcoming
+         * PlayerSpawnEvent will fire after a full load? Check that.
          */
         const onTick = () => {
             if (!this.#isReady) {
-                try {
-                    // Strange... this works even if the only player
-                    // resides in the Nether.
-                    this.#world
-                        .getDimension(MC.MinecraftDimensionTypes.overworld)
-                        .runCommand("testfor @a"); // would fail if no players exist.
+                const it = this.#world.getPlayers();
+                // World.prototype.getPlayers returns null when it's not
+                // ready yet, which isn't even documented!!
+                if (it) {
                     this.#isReady = true;
-
-                }
-                catch (e) {}
-
-                if (this.#isReady) {
                     this.emit("ready");
 
                     for (const ev of this.#pendingEvents) {
@@ -55,28 +49,42 @@ export class World extends EventEmitter {
                     }
                     this.#pendingEvents = [];
 
-                    //MC.system.clearRunSchedule(this.#readinessProbe!);
-                    //this.#readinessProbe = null;
-                }
-                else {
-                    MC.system.run(onTick);
+                    MC.system.clearRunSchedule(this.#readinessProbe!);
+                    this.#readinessProbe = null;
                 }
             }
         };
-        MC.system.run(onTick);
+        this.#readinessProbe = MC.system.runSchedule(onTick, 1);
 
-        this.#world.events.playerJoin.subscribe(rawEv => {
-            const ev: PlayerJoinEvent = { player: new Player(rawEv.player) };
-            if (this.#isReady) {
-                this.emit("playerJoin", ev);
-            }
-            else {
-                // NOTE: Don't know why but saving "ev" and using it later
-                // will cause a strange ReferenceError. We apparently need
-                // to do a shallow cloning.
-                this.#pendingEvents.push({name: "playerJoin", event: ev});
-            }
-        });
+        // FIXME: Remove this glue code when the game supports PlayerSpawnEvent.
+        if (this.#world.events.playerSpawn) {
+            this.#world.events.playerSpawn.subscribe(rawEv => {
+                const ev: PlayerSpawnEvent = {
+                    initialSpawn: rawEv.initialSpawn,
+                    player:       new Player(rawEv.player)
+                };
+                if (this.#isReady) {
+                    this.emit("playerSpawn", ev);
+                }
+                else {
+                    this.#pendingEvents.push({name: "playerSpawn", event: ev});
+                }
+            });
+        }
+        else {
+            this.#world.events.playerJoin.subscribe((rawEv: any) => {
+                const ev: PlayerSpawnEvent = {
+                    initialSpawn: true,
+                    player:       new Player(rawEv.player)
+                };
+                if (this.#isReady) {
+                    this.emit("playerSpawn", ev);
+                }
+                else {
+                    this.#pendingEvents.push({name: "playerSpawn", event: ev});
+                }
+            });
+        }
 
         this.#world.events.playerLeave.subscribe(ev => {
             if (this.#isReady) {

@@ -5,7 +5,7 @@ import { BeforeWatchdogTerminateEvent,
          WatchdogTerminateReason } from "cicada-lib/watchdog";
 import { ItemUseEvent } from "cicada-lib/entity";
 import { ItemStack } from "cicada-lib/item-stack";
-import { Player, PlayerJoinEvent, PlayerLeaveEvent } from "cicada-lib/player";
+import { Player, PlayerSpawnEvent, PlayerLeaveEvent } from "cicada-lib/player";
 import { sessionManager } from "./player-session";
 import { ProbingThread } from "./probing-thread";
 
@@ -19,9 +19,9 @@ system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
     }
 });
 
-world.on("playerJoin", (ev: PlayerJoinEvent) => {
+world.on("playerSpawn", (ev: PlayerSpawnEvent) => {
     const player = ev.player;
-    sessionManager.create(player.name);
+    sessionManager.create(player.id);
 
     /* When a player joins the world, give them a Wand of Probing if they
      * don't already have one in their inventory. */
@@ -34,13 +34,13 @@ world.on("playerJoin", (ev: PlayerJoinEvent) => {
 });
 
 world.on("playerLeave", (ev: PlayerLeaveEvent) => {
-    sessionManager.destroy(ev.playerName);
+    sessionManager.destroy(ev.playerId);
 });
 
 world.on("itemUse", async (ev: ItemUseEvent) => {
     if (ev.source instanceof Player) {
         const pl = ev.source;
-        const session = sessionManager.get(ev.source.name);
+        const session = sessionManager.get(ev.source.id);
         if (session.probingThread) {
             session.probingThread.cancel();
         }

@@ -17,8 +17,7 @@ export class Session {
 }
 
 export class SessionManager {
-    /** A map from player name to Session. Can't use player UUID because
-     * PlayerLeaveEvent doesn't have one. */
+    /** A map from player ID to Session. */
     readonly #sessions: Map<string, Session>;
 
     /** Do not call this directly. */
@@ -26,36 +25,36 @@ export class SessionManager {
         this.#sessions = new Map<string, Session>();
     }
 
-    public create(playerName: string): Session {
-        if (this.#sessions.has(playerName)) {
-            throw Error(`Duplicate session for player: ${playerName}`);
+    public create(playerId: string): Session {
+        if (this.#sessions.has(playerId)) {
+            throw Error(`Duplicate session for player: ${playerId}`);
         }
         else {
             const s = new Session();
-            this.#sessions.set(playerName, s);
+            this.#sessions.set(playerId, s);
             return s;
         }
     }
 
-    public destroy(playerName: string): this {
-        const s = this.#sessions.get(playerName);
+    public destroy(playerId: string): this {
+        const s = this.#sessions.get(playerId);
         if (s) {
             s.finalise();
-            this.#sessions.delete(playerName);
+            this.#sessions.delete(playerId);
             return this;
         }
         else {
-            throw Error(`Session not found for player: ${playerName}`);
+            throw Error(`Session not found for player: ${playerId}`);
         }
     }
 
-    public get(playerName: string): Session {
-        const session = this.#sessions.get(playerName);
+    public get(playerId: string): Session {
+        const session = this.#sessions.get(playerId);
         if (session) {
             return session;
         }
         else {
-            throw Error(`Session not found for player: ${playerName}`);
+            throw Error(`Session not found for player: ${playerId}`);
         }
     }
 }

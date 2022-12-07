@@ -19,8 +19,7 @@ interface Timeout {
 }
 const timeoutMap = new Map<TimeoutID, Timeout>();
 let nextTimeoutID = 0;
-let isScheduled = false;
-//let runScheduleId: number|null = null;
+let runScheduleId: number|null = null;
 
 function mkHandler(arg0: string|Function, ...args: any[]): (() => unknown) {
     return typeof arg0 === "string"
@@ -47,20 +46,16 @@ function onWorldTick() {
 }
 
 function listenOnTicks(): void {
-    if (!isScheduled) {
-        MC.system.run(onWorldTick);
+    if (runScheduleId == null) {
+        runScheduleId = MC.system.runSchedule(onWorldTick, 1);
     }
 }
 
 function unlistenOnTicks(): void {
-    // Do nothing for now. @minecraft/server-1.0.0 doesn't have
-    // System.prototype.clearRunSchedule.
-    /*
     if (runScheduleId != null) {
         MC.system.clearRunSchedule(runScheduleId);
         runScheduleId = null;
     }
-    */
 }
 
 /** A low-level implementation of the standard setTimeout() function. This

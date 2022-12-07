@@ -5,7 +5,6 @@ const util = require("node:util");
 const jsonlint = require("jsonlint");
 const fancyLog = require("fancy-log");
 const gulpIf = require("gulp-if");
-const ts = require("gulp-typescript");
 const streamReadAll = require("stream-read-all");
 const merge = require("merge");
 const { Transform, compose } = require("node:stream");
@@ -200,6 +199,7 @@ class RewriteTypescriptImports extends Transform {
 }
 
 function transpileTypeScript(tsConfigPath) {
+    const ts = require("gulp-typescript");
     const tsConfigDefault = {
         compilerOptions: {
             rootDir: "src",

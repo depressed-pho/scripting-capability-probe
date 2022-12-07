@@ -211,6 +211,16 @@ export enum WatchdogTerminateReason {
      */
     stackOverflow = 'stackOverflow',
 }
+interface IEventSignal<T> {
+    /**
+     * Registers a new event receiver for this particular type of event.
+     */
+    subscribe(callback: (arg: T) => void): (arg: T) => void;
+    /**
+     * De-registers an event receiver for this particular type of event.
+     */
+    unsubscribe(callback: (arg: T) => void): void;
+}
 /**
  * An event that fires as players enter chat messages.
  */
@@ -2474,25 +2484,6 @@ export class Dimension {
     getPlayers(getPlayers?: EntityQueryOptions): PlayerIterator;
     /**
      * @remarks
-     * Runs a particular command from the context of the broader
-     * dimension.
-     * @param commandString
-     * Command to run. Note that command strings should not start
-     * with slash.
-     * @returns
-     * For commands that return data, returns a JSON structure with
-     * command response values.
-     * @throws This function can throw errors.
-     * @example commands.js
-     * ```typescript
-     *        world.getDimension("overworld").runCommand("say You got a new high score!");
-     *        world.getDimension("overworld").runCommand("scoreboard players set @p score 10");
-     *
-     * ```
-     */
-    runCommand(commandString: string): any;
-    /**
-     * @remarks
      * Runs a particular command asynchronously from the context of
      * the broader dimension. Where possible - and especially for
      * long-running operations - you should use runCommandAsync
@@ -3030,24 +3021,6 @@ export class Entity {
      * @throws This function can throw errors.
      */
     removeTag(tag: string): boolean;
-    /**
-     * @remarks
-     * Runs a particular command from the context of this entity.
-     * @param commandString
-     * Command to run. Note that command strings should not start
-     * with slash.
-     * @returns
-     * For commands that return data, returns a JSON structure with
-     * command response values.
-     * @throws This function can throw errors.
-     * @example commands.js
-     * ```typescript
-     *        entity.runCommand("say You got a new high score!");
-     *        entity.runCommand("scoreboard players set @p score 10");
-     *
-     * ```
-     */
-    runCommand(commandString: string): any;
     /**
      * @remarks
      * Runs a particular command asynchronously from the context of
@@ -5518,9 +5491,17 @@ export class Events {
      */
     readonly 'pistonActivate': PistonActivateEventSignal;
     /**
-     * This event fires when a player joins a world.
+     * This event fires when a player joins a world. See also {@link
+     * @minecraft/server.Events.playerSpawn} for another related event you
+     * can trap for when a player is spawned the first time within a world.
      */
     readonly 'playerJoin': PlayerJoinEventSignal;
+    /**
+     * This event fires when a player spawns or respawns. Note that an
+     * additional flag within this event will tell you whether the player
+     * is spawning right after join vs. a respawn.
+     */
+    readonly playerSpawn: PlayerSpawnEventSignal;
     /**
      * This event fires when a player leaves a world.
      */
@@ -14041,24 +14022,6 @@ export class Player extends Entity {
     removeTag(tag: string): boolean;
     /**
      * @remarks
-     * Runs a particular command from the context of this player.
-     * @param commandString
-     * Command to run. Note that command strings should not start
-     * with slash.
-     * @returns
-     * For commands that return data, returns a JSON structure with
-     * command response values.
-     * @throws This function can throw errors.
-     * @example commands.js
-     * ```typescript
-     *        player.runCommand("say You got a new high score!");
-     *        player.runCommand("scoreboard players set @s score 10");
-     *
-     * ```
-     */
-    runCommand(commandString: string): any;
-    /**
-     * @remarks
      * Runs a particular command asynchronously from the context of
      * this entity. Where possible, running a command
      * asynchronously is recommended, especially for long running
@@ -14258,13 +14221,20 @@ export class PlayerIterator implements Iterable<Player> {
     protected constructor();
 }
 /**
- * Contains information regarding a player that has joined.
+ * Contains information regarding a player that has joined. See {@link
+ * @minecraft/server.PlayerJoinEvent} for more detailed information that
+ * could be returned after the first time a player has spawned within the
+ * game.
  */
 export class PlayerJoinEvent {
     /**
-     * Player that has joined the world.
+     * Opaque string identifier of the player that joined the game.
      */
-    'player': Player;
+    readonly playerId: string;
+    /**
+     * Name of the player that has joined.
+     */
+    readonly playerName: string;
     protected constructor();
 }
 /**
@@ -14290,14 +14260,38 @@ export class PlayerJoinEventSignal {
     protected constructor();
 }
 /**
+ * An event that contains more information about a player spawning.
+ */
+export class PlayerSpawnEvent {
+    /**
+     * If true, this is the initial spawn of a player after joining the
+     * game.
+     */
+    readonly initialSpawn: boolean;
+    /**
+     * Object that represents the player that joined the game.
+     */
+    readonly player: Player;
+    protected constructor();
+}
+export class PlayerSpawnEventSignal implements IEventSignal<PlayerSpawnEvent> {
+    subscribe(callback: (arg: PlayerSpawnEvent) => void): (arg: PlayerSpawnEvent) => void;
+    unsubscribe(callback: (arg: PlayerSpawnEvent) => void): void;
+    protected constructor();
+}
+/**
  * Contains information regarding a player that has left the
  * world.
  */
 export class PlayerLeaveEvent {
     /**
+     * Opaque string identifier of the player that has left the event.
+     */
+    readonly playerId: string;
+    /**
      * Player that has left the world.
      */
-    readonly 'playerName': string;
+    readonly playerName: string;
     protected constructor();
 }
 /**
@@ -14682,24 +14676,24 @@ export class System {
     /**
      * Represents the current world tick of the server.
      */
-    //readonly 'currentTick': number;
+    readonly currentTick: number;
     /**
      * Contains a set of events that are applicable for the
      * lifecycle of items in the Minecraft system.
      */
-    readonly 'events': SystemEvents;
+    readonly events: SystemEvents;
     protected constructor();
     /**
      * Cancels the execution of a function run that was previously
      * scheduled via the {@link @minecraft/server.System.run} function.
      */
-    //clearRun(runId: number): void;
+    clearRun(runId: number): void;
     /**
      * Cancels the execution of a scheduled function run that was
      * previously scheduled via the {@link
      * @minecraft/server.System.runSchedule} function.
      */
-    //clearRunSchedule(runScheduleId: number): void;
+    clearRunSchedule(runScheduleId: number): void;
     /**
      * Runs a specified function at a future time. This is frequently used
      * to implement delayed behaviors and game loops.
@@ -14731,7 +14725,7 @@ export class System {
      * @minecraft/server.System.clearRunSchedule} function to cancel the
      * execution of this scheduled run.
      */
-    //runSchedule(callback: () => void, tickInterval?: number): number;
+    runSchedule(callback: () => void, tickInterval?: number): number;
 }
 /**
  * Contains a set of events that are available across the scope
