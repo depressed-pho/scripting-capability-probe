@@ -210,5 +210,22 @@ export default group("features", [
             }
             expect(f).to.throw(TypeError);
         })
+    ]),
+    group("Error.prototype.cause", [
+        probe("Error has cause", () => {
+            const e = new Error("foo", {cause: "bar"})
+            expect(e).to.have.a.property("cause", "bar");
+        })
+    ]),
+    group("RegExp match indices (`hasIndices' / `d' flag)", [
+        probe("constructor supports it", () => {
+            expect(new RegExp("foo", "d")).to.be.an.instanceOf(RegExp);
+        }),
+        probe("RegExp.prototype.hasIndices", () => {
+            expect(new RegExp("foo", "d")).to.has.a.property("hasIndices", true);
+        }),
+        probe("shows up in flags", () => {
+            expect(new RegExp("foo", "d").flags).to.include("d");
+        })
     ])
 ]);

@@ -15304,9 +15304,13 @@ export interface Vector3 {
     z: number;
 }
 /**
+ * How many times the server ticks per in-game day.
+ */
+export const TicksPerDay: number;
+/**
  * How many times the server ticks per second of real time.
  */
-export const TicksPerSecond = 20;
+export const TicksPerSecond: number;
 /**
  * A class that provides system-level events and functions.
  */
