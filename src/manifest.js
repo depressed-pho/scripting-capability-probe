@@ -49,7 +49,8 @@ module.exports = {
 
             // Optional
             dependencies: {
-                "@minecraft/server": "1.1.0-beta"
+                "@minecraft/server": "1.1.0-beta",
+                "@minecraft/server-ui": "1.0.0-beta"
             },
 
             // Optional

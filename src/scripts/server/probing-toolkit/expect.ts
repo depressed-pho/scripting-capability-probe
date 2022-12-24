@@ -3,7 +3,6 @@ import { detailedTypeOf } from "cicada-lib/detailed-type-of";
 import { inspect } from "cicada-lib/inspect";
 import { getPathInfo } from "cicada-lib/objpath";
 import { format } from "cicada-lib/format";
-import { useFormatCodes } from "./config";
 
 export class ExpectationFailed extends Error {
     public constructor(message?: string, options?: ErrorOptions) {
@@ -56,7 +55,11 @@ export class Expectation {
 
     static #pretty(val: any): string {
         return inspect(val, {
-            colors:  useFormatCodes,
+            // Ideally we should refer to PlayerPrefs#useFormatCodes for
+            // "colors", but that requires an explicit passing of
+            // PlayerPrefs for each and every expect() because ECMAScript
+            // doesn't have dynamic scoping (except for 'this') or monads.
+            colors:  false,
             compact: true
         });
     }

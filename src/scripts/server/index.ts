@@ -29,7 +29,8 @@ world.on("playerSpawn", (ev: PlayerSpawnEvent) => {
     if (!player.inventory.some(item => item.typeId == "capprobe:wand_of_probing")) {
         const wand = new ItemStack("capprobe:wand_of_probing", 1);
         wand.lore = ["Swing this in the air to",
-                     "probe the nature of the world."];
+                     "probe the nature of the world.",
+                     "Sneak-use to open preferences window."];
         player.inventory.add(wand);
     }
 });

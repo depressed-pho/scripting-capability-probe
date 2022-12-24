@@ -2,6 +2,7 @@ import { Player } from "cicada-lib/player";
 import { ProgressBar } from "cicada-lib/progress-bar";
 import { Thread, ThreadCancellationRequested } from "cicada-lib/thread";
 import { Timer } from "cicada-lib/timer";
+import { PlayerPrefs } from "./player-prefs";
 import probeRoot from "./probe";
 
 export class ProbingThread extends Thread {
@@ -28,6 +29,7 @@ export class ProbingThread extends Thread {
             let numPassed: number;
             try {
                 numPassed = yield* probeRoot.run(
+                    player.preferences(PlayerPrefs),
                     async () => {
                         player.onScreenDisplay.setActionBar("Probing:\n" + progBar.toString());
                     },

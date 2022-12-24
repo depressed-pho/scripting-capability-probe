@@ -1,6 +1,6 @@
 import { ThreadCancellationRequested } from "cicada-lib/thread";
 import * as Fmt from "cicada-lib/fmt-code";
-import { useFormatCodes, showFailureDetails } from "./config";
+import { PlayerPrefs } from "../player-prefs";
 
 export type ProbeWorker = () => (void|Promise<unknown>|AsyncGenerator);
 
@@ -16,7 +16,7 @@ export class Probe {
     /** The generator returns (not yields) true if the test passes, or
      * false otherwise.
      */
-    public async *[Symbol.asyncIterator](): AsyncGenerator<unknown, boolean> {
+    public async *run(prefs: PlayerPrefs): AsyncGenerator<unknown, boolean> {
         // The worker function may throw exceptions. Catch and treat them
         // as failure except for ThreadCancellationRequested which should
         // only be caught by the thread root.
@@ -32,16 +32,16 @@ export class Probe {
                 }
             }
 
-            if (useFormatCodes) {
+            if (prefs.noUseFormatCodes) {
+                console.log("✓ " + this.#title);
+            }
+            else {
                 console.log(
                     Fmt.toString([Fmt.setColour(Fmt.Colour.Green)])
                         + "✓ "
                         + Fmt.toString([Fmt.setColour(Fmt.Colour.Gray)])
                         + this.#title
                         + Fmt.toString([Fmt.reset]));
-            }
-            else {
-                console.log("✓ " + this.#title);
             }
             return true;
         }
@@ -50,7 +50,10 @@ export class Probe {
                 throw e;
             }
             else {
-                if (useFormatCodes) {
+                if (prefs.noUseFormatCodes) {
+                    console.log("✗ " + this.#title);
+                }
+                else {
                     console.log(
                         Fmt.toString([Fmt.setColour(Fmt.Colour.Red)])
                             + "✗ "
@@ -58,13 +61,11 @@ export class Probe {
                             + this.#title
                             + Fmt.toString([Fmt.reset]));
                 }
-                else {
-                    console.log("✗ " + this.#title);
-                }
 
-                if (showFailureDetails) {
+                if (prefs.showFailureDetails) {
                     console.log(e);
                 }
+
                 return false;
             }
         }

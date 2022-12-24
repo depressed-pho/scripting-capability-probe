@@ -1,6 +1,6 @@
 import * as Fmt from "cicada-lib/fmt-code";
 import { Probe } from "./probe";
-import { useFormatCodes } from "./config";
+import { PlayerPrefs } from "../player-prefs";
 
 export class Group {
     readonly #title: string|undefined; // Groups can be anonymous.
@@ -26,9 +26,12 @@ export class Group {
         return n;
     }
 
-    #enter(groupLevel: number): void {
+    #enter(prefs: PlayerPrefs, groupLevel: number): void {
         if (this.#title != null) {
-            if (useFormatCodes) {
+            if (prefs.noUseFormatCodes) {
+                console.group(this.#title);
+            }
+            else {
                 const style: Fmt.Code[] = (() => {
                     switch (groupLevel) {
                         case 0:  return [Fmt.bold, Fmt.italicise];
@@ -42,9 +45,6 @@ export class Group {
                         + this.#title
                         + Fmt.toString([Fmt.reset]));
             }
-            else {
-                console.group(this.#title);
-            }
         }
     }
 
@@ -55,17 +55,18 @@ export class Group {
     }
 
     /** The generator returns the number of passed tests. */
-    public async *run(beforeProbe?: () => Promise<unknown>,
+    public async *run(prefs: PlayerPrefs,
+                      beforeProbe?: () => Promise<unknown>,
                       afterProbe?:  () => Promise<unknown>,
                       groupLevel: number = 0): AsyncGenerator<unknown, number> {
-        this.#enter(groupLevel);
+        this.#enter(prefs, groupLevel);
         try {
             let numPassed = 0;
             for (const child of this.#children) {
                 if (child instanceof Group) {
                     // "numPassed += yield* ..." triggers an internal error
                     // on QuickJS. Definitely an interpreter bug.
-                    const n = yield* child.run(beforeProbe, afterProbe, groupLevel + 1);
+                    const n = yield* child.run(prefs, beforeProbe, afterProbe, groupLevel + 1);
                     numPassed += n;
                 }
                 else {
@@ -73,7 +74,7 @@ export class Group {
                     if (beforeProbe) {
                         await beforeProbe();
                     }
-                    if (yield* child) {
+                    if (yield* child.run(prefs)) {
                         numPassed++;
                     }
                     if (afterProbe) {
@@ -86,10 +87,6 @@ export class Group {
         finally {
             this.#leave();
         }
-    }
-
-    public [Symbol.asyncIterator](): AsyncGenerator<unknown, number> {
-        return this.run();
     }
 }
 

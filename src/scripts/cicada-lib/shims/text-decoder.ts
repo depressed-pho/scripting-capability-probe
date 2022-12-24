@@ -20,7 +20,7 @@ class TextDecoderShim {
     readonly fatal: boolean;
     readonly ignoreBOM: boolean;
     #state: DecodingState;
-    #pending: Uint8Array; // Always 3 octets long.
+    readonly #pending: Uint8Array; // Always 3 octets long.
     #pendingPos: number;  // 0 means we are at a border of UTF-8 character sequence.
     #chunk: Uint16Array|null;
     #chunkPos: number;
