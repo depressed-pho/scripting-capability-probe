@@ -1,0 +1,7 @@
+syntax = "proto3";
+package capprobe;
+
+message PlayerPrefs {
+  bool useFormatCodes = 1;
+  bool showFailureDetails = 2;
+}

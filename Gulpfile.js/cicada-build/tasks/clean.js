@@ -6,4 +6,5 @@ exports.distclean = async function distclean () {
 
 exports.clean = async function clean () {
     await rm("dist/build", {force: true, recursive: true});
+    await rm("dist/generated", {force: true, recursive: true});
 };

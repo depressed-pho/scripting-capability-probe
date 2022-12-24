@@ -31,18 +31,23 @@
     "node": ">=18.7"
   },
   "devDependencies": {
+    "@protobuf-ts/plugin": "^2.8.2",
     "dotenv": "^16.0.1",
     "fancy-log": "^2.0.0",
     "gm": "^1.25.0",
     "gulp": "^4.0.2",
     "gulp-cli": "^2.3.0",
-    "gulp-if": "^3.0.0",
+    "gulp-ignore": "^3.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
     "jsonlint": "^1.6.3",
     "merge": "^2.1.1",
+    "npm-which": "^3.0.1",
     "semver": "^7.3.7",
     "stream-read-all": "^3.0.1",
     "typescript": "^4.7.4",
     "yazl": "^2.5.1"
+  },
+  "dependencies": {
+    "@protobuf-ts/runtime": "^2.8.2"
   }
 }

@@ -2955,7 +2955,7 @@ export class Entity {
      * property has not been set.
      * @throws This function can throw errors.
      */
-    getDynamicProperty(identifier: string): boolean | number | string;
+    getDynamicProperty(identifier: string): boolean | number | string | undefined;
     /**
      * @remarks
      * Returns the effect for the specified EffectType on the
@@ -13934,7 +13934,7 @@ export class Player extends Entity {
      * property has not been set.
      * @throws This function can throw errors.
      */
-    getDynamicProperty(identifier: string): boolean | number | string;
+    getDynamicProperty(identifier: string): boolean | number | string | undefined;
     /**
      * @remarks
      * Returns the effect for the specified EffectType on the
@@ -15006,7 +15006,7 @@ export class World {
      * property has not been set.
      * @throws This function can throw errors.
      */
-    getDynamicProperty(identifier: string): boolean | number | string;
+    getDynamicProperty(identifier: string): boolean | number | string | undefined;
     /**
      * @remarks
      * Returns all players currently in the world.

@@ -8,6 +8,7 @@ import { ItemStack } from "cicada-lib/item-stack";
 import { Player, PlayerSpawnEvent, PlayerLeaveEvent } from "cicada-lib/player";
 import { sessionManager } from "./player-session";
 import { ProbingThread } from "./probing-thread";
+import { PlayerPrefsUI } from "./player-prefs-ui";
 
 system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
     switch (ev.terminateReason) {
@@ -39,15 +40,20 @@ world.on("playerLeave", (ev: PlayerLeaveEvent) => {
 
 world.on("itemUse", async (ev: ItemUseEvent) => {
     if (ev.source instanceof Player) {
-        const pl = ev.source;
-        const session = sessionManager.get(ev.source.id);
-        if (session.probingThread) {
-            session.probingThread.cancel();
+        const player = ev.source;
+        if (player.isSneaking) {
+            PlayerPrefsUI.open(player);
         }
         else {
-            session.probingThread = new ProbingThread(pl);
-            await session.probingThread.join();
-            session.probingThread = null;
+            const session = sessionManager.get(ev.source.id);
+            if (session.probingThread) {
+                session.probingThread.cancel();
+            }
+            else {
+                session.probingThread = new ProbingThread(player);
+                await session.probingThread.join();
+                session.probingThread = null;
+            }
         }
     }
 });

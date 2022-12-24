@@ -1,264 +1,68 @@
-const fs = require("node:fs");
+const ignore = require("gulp-ignore");
 const path = require("node:path");
-const process = require("node:process");
-const util = require("node:util");
-const jsonlint = require("jsonlint");
-const fancyLog = require("fancy-log");
-const gulpIf = require("gulp-if");
-const streamReadAll = require("stream-read-all");
-const merge = require("merge");
-const { Transform, compose } = require("node:stream");
-const { parallel, src, dest } = require("gulp");
+const { parallel, series, src, dest } = require("gulp");
 const { Project } = require("../project.js");
-const { requireUncached } = require("../utils.js");
-
-class ValidateJSON extends Transform {
-    constructor() {
-        super({objectMode: true});
-    }
-
-    _transform(vinyl, enc, cb) {
-        if (path.extname(vinyl.path) == ".json") {
-            if (vinyl.isBuffer()) {
-                const e = ValidateJSON.#validateJSONBuffer(vinyl, enc, vinyl.contents);
-                if (e) {
-                    cb(e);
-                }
-                else {
-                    cb(null, vinyl);
-                }
-            }
-            else if (vinyl.isStream()) {
-                streamReadAll(vinyl.contents.clone())
-                    .then(buf => {
-                        const e = ValidateJSON.#validateJSONBuffer(vinyl, enc, buf);
-                        if (e) {
-                            cb(e);
-                        }
-                        else {
-                            cb(null, vinyl);
-                        }
-                    })
-                    .else(e => cb(e));
-            }
-            else {
-                cb(null, vinyl);
-            }
-        }
-        else {
-            cb(null, vinyl);
-        }
-    }
-
-    static #validateJSONBuffer(vinyl, enc, buf) /* null | Error */ {
-        /* THINKME: We should validate it against actual JSON schemata, not
-         * only its well-formedness. */
-        try {
-            jsonlint.parse(buf.toString(enc));
-        }
-        catch (e) {
-            return Error(`${vinyl.path}: ${e.message}`);
-        }
-    }
-}
-
-// Why doesn't tsc does this for us? Just why?
-class RewriteTypescriptImports extends Transform {
-    #baseUrl;
-    #paths;
-
-    constructor(baseUrl, paths) {
-        super({objectMode: true});
-        this.#baseUrl = baseUrl;
-        this.#paths   = paths;
-    }
-
-    _transform(vinyl, enc, cb) {
-        // THINKME: We should probably update source
-        // maps. gulp-transform-js-ast does that, but we can't use it
-        // because it is heavily outdated and cannot parse modern ES.
-        if (vinyl.isBuffer()) {
-            try {
-                vinyl.contents = this.#rewriteBuffer(vinyl.path, vinyl.contents, enc);
-                cb(null, vinyl);
-            }
-            catch (e) {
-                cb(e);
-            }
-        }
-        else if (vinyl.isStream()) {
-            streamReadAll(vinyl.contents.clone())
-                .then(buf => {
-                    try {
-                        vinyl.contents = this.#rewriteBuffer(vinyl.path, buf, enc);
-                        cb(null, vinyl);
-                    }
-                    catch (e) {
-                        cb(e);
-                    }
-                });
-        }
-        else {
-            cb(null, vinyl);
-        }
-    }
-
-    #rewriteBuffer(sourcePath, buf, enc) {
-        const sourceInput = buf.toString(enc);
-
-        // NOTE: We want to use recast
-        // (https://www.npmjs.com/package/recast) but we can't, since it
-        // cannot handle some of modern ES syntaxes we use. So... the
-        // "solution" is to apply a damn RegExp transformation.
-        const sourceOutput = sourceInput.replaceAll(
-            /(import|export)(?:(.*?)from)?\s*(?:"([^"]+)"|'([^']+)')/g,
-            (match, impExp, locals, dqPath, sqPath) => {
-                const origPath = dqPath != null ? dqPath : sqPath;
-                const newPath  = this.#rewritePath(origPath, sourcePath);
-                if (locals == null) {
-                    return `${impExp} "${newPath}"`;
-                }
-                else {
-                    return `${impExp}${locals}from "${newPath}"`;
-                }
-            });
-
-        return Buffer.from(sourceOutput, enc);
-    }
-
-    #rewritePath(origPath, sourcePath) {
-        // Search it first from the alias table.
-        for (const [from, to] of Object.entries(this.#paths)) {
-            if (origPath === from) {
-                // Exact match
-                for (const candidate of to) {
-                    if (candidate.endsWith("*")) {
-                        throw new Error(`Invalid path candidate: ${candidate}`);
-                    }
-                    const base     = path.resolve(this.#baseUrl, candidate);
-                    const resolved = this.#resolve(origPath, sourcePath, base);
-                    if (resolved != null) {
-                        return resolved;
-                    }
-                }
-                throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
-            }
-            else if (from.endsWith("*") && origPath.startsWith(from.slice(0, -1))) {
-                // Wildcard match
-                const wildcarded = origPath.slice(from.length - 1);
-
-                for (const candidate of to) {
-                    if (!candidate.endsWith("*")) {
-                        throw new Error(`Invalid path candidate: ${candidate}`);
-                    }
-                    const stem     = candidate.slice(0, -1);
-                    const base     = path.resolve(this.#baseUrl, stem + wildcarded);
-                    const resolved = this.#resolve(origPath, sourcePath, base);
-                    if (resolved != null) {
-                        return resolved;
-                    }
-                }
-                throw new Error(`File ${origPath} not found in ${util.inspect(to)}`);
-            }
-        }
-        // Not found in the alias table. Probably a relative path?
-        const base     = path.resolve(path.dirname(sourcePath), origPath);
-        const resolved = this.#resolve(origPath, sourcePath, base);
-        if (resolved != null) {
-            return resolved;
-        }
-        else {
-            throw new Error(`File ${origPath} not found in ${path.dirname(base)}`);
-        }
-    }
-
-    #resolve(origPath, sourcePath, base) {
-        function toRelative(from, to) {
-            const relative = path.relative(from, to);
-            if (relative.startsWith("./") || relative.startsWith("../")) {
-                return relative;
-            }
-            else {
-                return "./" + relative;
-            }
-        }
-        if (fs.existsSync(base)) {
-            return toRelative(path.dirname(sourcePath), base);
-        }
-        else if (fs.existsSync(base + ".d.ts")) {
-            // No need to rewrite this.
-            return origPath;
-        }
-        else if (fs.existsSync(base + ".ts")) {
-            return toRelative(path.dirname(sourcePath), base + ".js");
-        }
-        else {
-            return null;
-        }
-    }
-}
-
-function transpileTypeScript(tsConfigPath) {
-    const ts = require("gulp-typescript");
-    const tsConfigDefault = {
-        compilerOptions: {
-            rootDir: "src",
-            baseUrl: "src",
-            module: "ES2020",
-            paths:  {},
-            target: "ES2022",
-            explainFiles: true
-        }
-    };
-    const tsConfig = merge.recursive(
-        true,
-        tsConfigDefault,
-        fs.existsSync(tsConfigPath)
-            ? requireUncached(path.resolve(tsConfigPath))
-            : {});
-    const tsProj = ts.createProject(tsConfig.compilerOptions);
-    const rewrite = new RewriteTypescriptImports(
-        tsConfig.compilerOptions.baseUrl, tsConfig.compilerOptions.paths);
-
-    return gulpIf(
-        vinyl => {
-            const isTypeScript = path.extname(vinyl.path) == ".ts";
-            if (isTypeScript) {
-                const relPath = path.relative(process.cwd(), vinyl.path);
-                fancyLog.info("Transpiling `" + relPath + "'...");
-            }
-            return isTypeScript;
-        },
-        compose(tsProj(), rewrite)
-    );
-}
+const { Vendor } = require("../vendor.js");
+const { RewriteImports } = require("../rewrite-imports.js");
+const { compileProtobuf } = require("../streams/compile-protobuf");
+const { transpileTypeScript } = require("../streams/transpile-typescript");
+const { validateJSON } = require("../streams/validate-json");
 
 exports.contents = function contents(cb) {
-    const proj  = new Project("package.json", "src/manifest.js");
-    const tasks = [];
+    const proj    = new Project("package.json", "src/manifest.js");
+    const vendor  = new Vendor("package.json");
+    const tasks   = [];
 
     for (const pack of proj.packs) {
-        const buildPath = pack.stagePath("dist/build");
+        const buildPath  = pack.stagePath("dist/build");
+        const genPath    = pack.stagePath("dist/generated");
+
         for (const mod of pack.modules) {
-            const srcGlobs = Array.from(mod.include.values());
+            const srcGlobs   = Array.from(mod.include.values());
 
             switch (mod.type) {
             case "script":
                 /* Special case: the script module often needs a
                  * transpilation. */
+
+                // This is unsound. We want our vendor packages to end up
+                // in dist/stage/scripts but there aren't any less terrible
+                // ways than this.
+                const scriptRoot = mod.entry.split(path.sep)[0];
+                const vendorPath = path.join(buildPath, scriptRoot);
+                const rewrite    = new RewriteImports("src/tsconfig.json");
+                rewrite.addAliases(vendor.aliases(vendorPath));
+
                 tasks.push(
-                    function transpile() {
-                        // THINKME: Support PureScript as well!!!
-                        return src(srcGlobs, {cwd: "src", cwdbase: true, sourcemaps: true})
-                            .pipe(transpileTypeScript("src/tsconfig.json"))
-                            .pipe(dest(buildPath, {sourcemaps: "."}));
-                    });
+                    series(
+                        parallel(
+                            // We must run protoc before tsc because the
+                            // compiler is going to need them.
+                            function protoc() {
+                                return src(srcGlobs, {cwd: "src", cwdbase: true})
+                                    .pipe(ignore.include("**/*.proto"))
+                                    .pipe(compileProtobuf(genPath));
+                            },
+                            // Also vendor run-time dependencies because
+                            // RewriteImports is going to need them.
+                            vendor.task(vendorPath)
+                        ),
+                        function transpile() {
+                            // THINKME: Maybe support PureScript as well?
+                            return src(srcGlobs, {cwd: "src", cwdbase: true, sourcemaps: true})
+                                .pipe(src(srcGlobs, {cwd: genPath, cwdbase: true, sourcemaps: true}))
+                                .pipe(ignore.exclude("**/*.proto"))
+                                .pipe(transpileTypeScript("src/tsconfig.json"))
+                                .pipe(rewrite.stream(buildPath))
+                                .pipe(dest(buildPath, {sourcemaps: "."}));
+                        }
+                    ));
                 break;
             default:
                 tasks.push(
                     function copyData() {
                         return src(srcGlobs, {cwd: "src", cwdbase: true})
-                            .pipe(new ValidateJSON())
+                            .pipe(validateJSON())
                             .pipe(dest(buildPath));
                     });
             }
@@ -273,7 +77,7 @@ exports.contents = function contents(cb) {
     }
 
     if (tasks.length > 0) {
-        parallel(tasks)(cb);
+        parallel(...tasks)(cb);
     }
     else {
         cb();

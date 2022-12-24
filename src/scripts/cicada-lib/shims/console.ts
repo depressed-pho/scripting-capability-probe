@@ -7,6 +7,7 @@
 import { formatWithOptions, stringify } from "../format";
 import { InspectOptions, inspect } from "../inspect";
 import { Timer } from "../timer";
+import { installGlobal } from "./_util";
 import * as PP from "../pprint";
 
 export enum Severity {
@@ -235,13 +236,5 @@ class Console {
     }
 }
 
-if (!("cicada-lib" in globalThis)) {
-    (globalThis as any)["cicada-lib"] = {};
-}
-if (!("shims" in (globalThis as any)["cicada-lib"])) {
-    (globalThis as any)["cicada-lib"]["shims"] = new Set<string>();
-}
-if (!(globalThis as any)["cicada-lib"]["shims"].has("console")) {
-    globalThis.console = new Console(globalThis.console as any) as any;
-    (globalThis as any)["cicada-lib"]["shims"].add("console");
-}
+// @ts-ignore: Can't make TypeScript happy here.
+installGlobal("console", new Console(globalThis.console), {overwrite: true});
