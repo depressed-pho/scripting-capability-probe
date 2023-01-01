@@ -55,7 +55,7 @@ export function lazy<T>(thunk: () => T): T {
         has(_targ: any, key: PropertyKey): boolean {
             if (!isEvaluated) { value = thunk(); isEvaluated = true }
 
-            return key in value;
+            return key in (value as any);
         },
         isExtensible(_targ: any): boolean {
             if (!isEvaluated) { value = thunk(); isEvaluated = true }

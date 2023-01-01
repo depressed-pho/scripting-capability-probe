@@ -244,6 +244,7 @@ export default group("Symbol", [
                     return ["foo"];
                 }
             };
+            // @ts-ignore: TypeScript doesn't like this.
             expect("".match(obj)).to.deeply.equal(["foo"]);
         }),
         probe("@@match, RegExp constructor", () => {
@@ -255,7 +256,8 @@ export default group("Symbol", [
                 constructor: RegExp,
                 [Symbol.match]: true as any
             };
-            expect(RegExp(obj as any)).to.equal(obj);
+            // @ts-ignore: TypeScript doesn't like this ofc.
+            expect(RegExp(obj)).to.equal(obj);
         }),
         probe("@@match, String.prototype.startsWith", () => {
             const re = /./;

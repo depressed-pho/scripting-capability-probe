@@ -2,7 +2,7 @@ import { Player } from "cicada-lib/player";
 import { ProgressBar } from "cicada-lib/progress-bar";
 import { Thread, ThreadCancellationRequested } from "cicada-lib/thread";
 import { Timer } from "cicada-lib/timer";
-import { PlayerPrefs } from "./player-prefs";
+import { PlayerPrefs } from "./player-prefs_pb";
 import probeRoot from "./probe";
 
 export class ProbingThread extends Thread {

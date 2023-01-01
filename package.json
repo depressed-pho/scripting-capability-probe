@@ -1,15 +1,13 @@
 {
   "name": "scripting-capability-probe",
   "version": "1.0.0",
-  "description": "A Minecraft Bedrock addon that inspects the capability of the JavaScript engine that is accessible through the GameTest Framework.",
-  "type": "commonjs",
+  "description": "Inspects the capability of the JavaScript engine that is accessible through the Scripting API.",
   "scripts": {
-    "build": "gulp",
-    "clean": "gulp clean",
-    "distclean": "gulp distclean",
-    "install": "gulp install",
-    "watch": "gulp watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "cicada-build",
+    "clean": "cicada-build clean",
+    "distclean": "cicada-build distclean",
+    "install-addon": "cicada-build install",
+    "watch": "cicada-build watch"
   },
   "repository": {
     "type": "git",
@@ -27,25 +25,13 @@
     "url": "https://github.com/depressed-pho/scripting-capability-probe/issues"
   },
   "homepage": "https://github.com/depressed-pho/scripting-capability-probe#readme",
-  "engines": {
-    "node": ">=18.7"
-  },
   "devDependencies": {
+    "@depressed-pho/cicada-build": "github:depressed-pho/cicada-build",
     "@protobuf-ts/plugin": "^2.8.2",
-    "dotenv": "^16.0.1",
-    "fancy-log": "^2.0.0",
     "gm": "^1.25.0",
-    "gulp": "^4.0.2",
-    "gulp-cli": "^2.3.0",
-    "gulp-ignore": "^3.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
     "jsonlint": "^1.6.3",
-    "merge": "^2.1.1",
-    "npm-which": "^3.0.1",
-    "semver": "^7.3.7",
-    "stream-read-all": "^3.0.1",
-    "typescript": "^4.7.4",
-    "yazl": "^2.5.1"
+    "typescript": "^4.7.4"
   },
   "dependencies": {
     "@protobuf-ts/runtime": "^2.8.2"

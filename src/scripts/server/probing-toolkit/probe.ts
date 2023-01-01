@@ -1,6 +1,6 @@
 import { ThreadCancellationRequested } from "cicada-lib/thread";
 import * as Fmt from "cicada-lib/fmt-code";
-import { PlayerPrefs } from "../player-prefs";
+import { PlayerPrefs } from "../player-prefs_pb";
 
 export type ProbeWorker = () => (void|Promise<unknown>|AsyncGenerator);
 

@@ -1,6 +1,6 @@
 import { Player } from "cicada-lib/player";
 import { ModalFormData } from "cicada-lib/ui";
-import { PlayerPrefs } from "./player-prefs";
+import { PlayerPrefs } from "./player-prefs_pb";
 
 export class PlayerPrefsUI {
     public static async open(player: Player): Promise<void> {
