@@ -1,6 +1,6 @@
-import { group, probe, expect } from "../../probing-toolkit";
+import { group, probe, expect } from "../../probing-toolkit.js";
 import { PropGetRecorder, PropSetRecorder, PropDefineRecorder,
-         PropDeleteRecorder, PropDescRecorder, OwnKeysRecorder } from "../_utils";
+         PropDeleteRecorder, PropDescRecorder, OwnKeysRecorder } from "../_utils.js";
 
 const propOrderObj = (() => {
     const obj: any = {

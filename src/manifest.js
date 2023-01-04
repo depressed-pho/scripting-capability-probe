@@ -12,7 +12,7 @@ module.exports = {
         // (optional). The file will be copied if it's a PNG file of at
         // most 256x256 pixels, or converted otherwise. The image has to be
         // square: its width and height must be the same.
-        icon: "capability-probe.svg",
+        icon: "capability-probe.png",
 
         // Required
         min_engine_version: "1.19.51"

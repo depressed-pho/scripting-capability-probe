@@ -1,6 +1,6 @@
-import { group } from "../probing-toolkit";
-import features from "./es2019/features";
-import misc from "./es2019/misc";
+import { group } from "../probing-toolkit.js";
+import features from "./es2019/features.js";
+import misc from "./es2019/misc.js";
 
 export default group("ES2019 Support", [
     features,

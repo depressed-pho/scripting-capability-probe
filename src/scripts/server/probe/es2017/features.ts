@@ -1,4 +1,4 @@
-import { Expectation, group, probe, expect } from "../../probing-toolkit";
+import { Expectation, group, probe, expect } from "../../probing-toolkit.js";
 
 export default group("features", [
     group("Object static methods", [

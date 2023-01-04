@@ -1,13 +1,14 @@
-import { group } from "./probing-toolkit";
-import es2015 from "./probe/es2015";
-import es2016 from "./probe/es2016";
-import es2017 from "./probe/es2017";
-import es2018 from "./probe/es2018";
-import es2019 from "./probe/es2019";
-import es2020 from "./probe/es2020";
-import es2021 from "./probe/es2021";
-import es2022 from "./probe/es2022";
-import quickjs from "./probe/quickjs";
+import { group } from "./probing-toolkit.js";
+import es2015 from "./probe/es2015.js";
+import es2016 from "./probe/es2016.js";
+import es2017 from "./probe/es2017.js";
+import es2018 from "./probe/es2018.js";
+import es2019 from "./probe/es2019.js";
+import es2020 from "./probe/es2020.js";
+import es2021 from "./probe/es2021.js";
+import es2022 from "./probe/es2022.js";
+import quickjs from "./probe/quickjs.js";
+import webAPI from "./probe/web-api.js";
 
 export default group([
     es2015,
@@ -18,5 +19,6 @@ export default group([
     es2020,
     es2021,
     es2022,
-    quickjs
+    quickjs,
+    webAPI
 ]);

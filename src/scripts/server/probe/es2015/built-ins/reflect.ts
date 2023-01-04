@@ -1,4 +1,4 @@
-import { group, probe, expect } from "../../../probing-toolkit";
+import { group, probe, expect } from "../../../probing-toolkit.js";
 
 export default group("Reflect", [
     probe("Reflect.get", () => {

@@ -1,5 +1,5 @@
-import { group, probe, expect } from "../../../probing-toolkit";
-import { createIterableObject, withObjectMethodChanged } from "../../_utils";
+import { group, probe, expect } from "../../../probing-toolkit.js";
+import { createIterableObject, withObjectMethodChanged } from "../../_utils.js";
 
 const setMethods = [
     "delete",

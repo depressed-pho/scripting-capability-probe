@@ -1,5 +1,5 @@
-import { group, probe, expect } from "../../probing-toolkit";
-import { PropGetRecorder } from "../_utils";
+import { group, probe, expect } from "../../probing-toolkit.js";
+import { PropGetRecorder } from "../_utils.js";
 
 export default group("misc", [
     probe("generator functions can't be used with `new'", () => {

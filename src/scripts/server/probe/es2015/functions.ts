@@ -1,5 +1,5 @@
-import { group, probe, expect } from "../../probing-toolkit";
-import { createIterableObject } from "../_utils";
+import { group, probe, expect } from "../../probing-toolkit.js";
+import { createIterableObject } from "../_utils.js";
 
 export default group("Functions", [
     group("Arrow functions", [

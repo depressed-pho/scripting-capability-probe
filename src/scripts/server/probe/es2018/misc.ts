@@ -1,4 +1,4 @@
-import { group, probe, expect } from "../../probing-toolkit";
+import { group, probe, expect } from "../../probing-toolkit.js";
 
 export default group("misc", [
     probe("Proxy `ownKeys' handler, duplicate keys for non-extensible targets", () => {

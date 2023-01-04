@@ -1,5 +1,5 @@
-import { group, probe, expect } from "../../probing-toolkit";
-import { withPropertyChanged } from "../_utils";
+import { group, probe, expect } from "../../probing-toolkit.js";
+import { withPropertyChanged } from "../_utils.js";
 
 export default group("features", [
     group("String.prototype.matchAll", [

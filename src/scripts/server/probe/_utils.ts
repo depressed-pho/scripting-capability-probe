@@ -1,4 +1,4 @@
-import { expect } from "../probing-toolkit";
+import { expect } from "../probing-toolkit.js";
 
 export function createIterableObject<T>(src: Iterable<T>, extraMethods: any = {}): Iterable<T> {
     return {
