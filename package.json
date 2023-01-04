@@ -27,13 +27,13 @@
   "homepage": "https://github.com/depressed-pho/scripting-capability-probe#readme",
   "devDependencies": {
     "@protobuf-ts/plugin": "^2.8.2",
-    "cicada-build": "file:../cicada-build",
+    "cicada-build": "github:depressed-pho/cicada-build",
     "gulp-typescript": "^6.0.0-alpha.1",
     "jsonlint": "^1.6.3",
     "typescript": "^4.7.4"
   },
   "dependencies": {
     "@protobuf-ts/runtime": "^2.8.2",
-    "cicada-lib": "file:../cicada-lib"
+    "cicada-lib": "github:depressed-pho/cicada-lib"
   }
 }
