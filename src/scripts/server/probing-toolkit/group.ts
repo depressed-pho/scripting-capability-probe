@@ -1,6 +1,6 @@
-import * as Fmt from "cicada-lib/fmt-code";
-import { Probe } from "./probe";
-import { PlayerPrefs } from "../player-prefs_pb";
+import * as Fmt from "cicada-lib/fmt-code.js";
+import { Probe } from "./probe.js";
+import { PlayerPrefs } from "../player-prefs_pb.js";
 
 export class Group {
     readonly #title: string|undefined; // Groups can be anonymous.

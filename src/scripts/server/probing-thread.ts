@@ -1,9 +1,9 @@
-import { Player } from "cicada-lib/player";
-import { ProgressBar } from "cicada-lib/progress-bar";
-import { Thread, ThreadCancellationRequested } from "cicada-lib/thread";
-import { Timer } from "cicada-lib/timer";
-import { PlayerPrefs } from "./player-prefs_pb";
-import probeRoot from "./probe";
+import { Player } from "cicada-lib/player.js";
+import { ProgressBar } from "cicada-lib/progress-bar.js";
+import { Thread, ThreadCancellationRequested } from "cicada-lib/thread.js";
+import { Timer } from "cicada-lib/timer.js";
+import { PlayerPrefs } from "./player-prefs_pb.js";
+import probeRoot from "./probe.js";
 
 export class ProbingThread extends Thread {
     static readonly #lineWidth = 40;
@@ -29,7 +29,7 @@ export class ProbingThread extends Thread {
             let numPassed: number;
             try {
                 numPassed = yield* probeRoot.run(
-                    player.preferences(PlayerPrefs),
+                    player.getPreferences(PlayerPrefs),
                     async () => {
                         player.onScreenDisplay.setActionBar("Probing:\n" + progBar.toString());
                     },

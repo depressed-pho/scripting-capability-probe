@@ -1,8 +1,8 @@
-import { deepEqual } from "cicada-lib/deep-equal";
-import { detailedTypeOf } from "cicada-lib/detailed-type-of";
-import { inspect } from "cicada-lib/inspect";
-import { getPathInfo } from "cicada-lib/objpath";
-import { format } from "cicada-lib/format";
+import { deepEqual } from "cicada-lib/deep-equal.js";
+import { detailedTypeOf } from "cicada-lib/detailed-type-of.js";
+import { inspect } from "cicada-lib/inspect.js";
+import { getPathInfo } from "cicada-lib/objpath.js";
+import { format } from "cicada-lib/format.js";
 
 export class ExpectationFailed extends Error {
     public constructor(message?: string, options?: ErrorOptions) {

@@ -1,4 +1,4 @@
-import { Thread } from "cicada-lib/thread";
+import { Thread } from "cicada-lib/thread.js";
 
 export class Session {
     public probingThread: Thread|null;

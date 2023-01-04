@@ -1,14 +1,14 @@
-import "cicada-lib/shims/console";
-import { system } from "cicada-lib/system";
-import { world } from "cicada-lib/world";
+import "cicada-lib/shims/console.js";
+import { system } from "cicada-lib/system.js";
+import { world } from "cicada-lib/world.js";
 import { BeforeWatchdogTerminateEvent,
-         WatchdogTerminateReason } from "cicada-lib/watchdog";
-import { ItemUseEvent } from "cicada-lib/entity";
-import { ItemStack } from "cicada-lib/item-stack";
-import { Player, PlayerSpawnEvent, PlayerLeaveEvent } from "cicada-lib/player";
-import { sessionManager } from "./player-session";
-import { ProbingThread } from "./probing-thread";
-import { PlayerPrefsUI } from "./player-prefs-ui";
+         WatchdogTerminateReason } from "cicada-lib/watchdog.js";
+import { ItemUseEvent } from "cicada-lib/entity.js";
+import { ItemStack } from "cicada-lib/item-stack.js";
+import { Player, PlayerSpawnEvent, PlayerLeaveEvent } from "cicada-lib/player.js";
+import { sessionManager } from "./player-session.js";
+import { ProbingThread } from "./probing-thread.js";
+import { PlayerPrefsUI } from "./player-prefs-ui.js";
 
 system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
     switch (ev.terminateReason) {
