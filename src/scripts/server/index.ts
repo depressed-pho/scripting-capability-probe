@@ -1,16 +1,17 @@
 import "cicada-lib/shims/console.js";
+import { declareNamespace } from "cicada-lib/preferences.js";
 import { system } from "cicada-lib/system.js";
+import { WatchdogTerminateReason } from "cicada-lib/watchdog.js";
 import { world } from "cicada-lib/world.js";
-import { BeforeWatchdogTerminateEvent,
-         WatchdogTerminateReason } from "cicada-lib/watchdog.js";
-import { ItemUseEvent } from "cicada-lib/entity.js";
 import { ItemStack } from "cicada-lib/item-stack.js";
-import { Player, PlayerSpawnEvent, PlayerLeaveEvent } from "cicada-lib/player.js";
+import { Player  } from "cicada-lib/player.js";
 import { sessionManager } from "./player-session.js";
 import { ProbingThread } from "./probing-thread.js";
 import { PlayerPrefsUI } from "./player-prefs-ui.js";
 
-system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
+declareNamespace("capprobe");
+
+system.events.beforeWatchdogTerminate.subscribe(ev => {
     switch (ev.terminateReason) {
         case WatchdogTerminateReason.stackOverflow:
             /* There is a probe that can knowingly cause a stack
@@ -20,7 +21,7 @@ system.on("beforeWatchdogTerminate", (ev: BeforeWatchdogTerminateEvent) => {
     }
 });
 
-world.on("playerSpawn", (ev: PlayerSpawnEvent) => {
+world.events.playerSpawn.subscribe(ev => {
     const player = ev.player;
     sessionManager.create(player.id);
 
@@ -35,11 +36,11 @@ world.on("playerSpawn", (ev: PlayerSpawnEvent) => {
     }
 });
 
-world.on("playerLeave", (ev: PlayerLeaveEvent) => {
+world.events.playerLeave.subscribe(ev => {
     sessionManager.destroy(ev.playerId);
 });
 
-world.on("itemUse", async (ev: ItemUseEvent) => {
+world.events.itemUse.subscribe(async ev => {
     if (ev.source instanceof Player) {
         const player = ev.source;
         if (player.isSneaking) {
