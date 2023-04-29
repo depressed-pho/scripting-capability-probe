@@ -41,7 +41,9 @@ world.events.playerLeave.subscribe(ev => {
 });
 
 world.events.itemUse.subscribe(async ev => {
-    if (ev.source instanceof Player) {
+    if (ev.source instanceof Player &&
+        ev.itemStack.typeId === "capprobe:wand_of_probing") {
+
         const player = ev.source;
         if (player.isSneaking) {
             PlayerPrefsUI.open(player);

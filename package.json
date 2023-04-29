@@ -1,6 +1,6 @@
 {
   "name": "scripting-capability-probe",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Inspects the capability of the JavaScript engine that is accessible through the Scripting API.",
   "scripts": {
     "build": "cicada-build",
