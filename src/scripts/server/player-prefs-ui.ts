@@ -12,8 +12,8 @@ export class PlayerPrefsUI {
 
         const resp  = await form.show(player);
         if (resp.formValues) {
-            prefs.noUseFormatCodes   = !resp.formValues[0];
-            prefs.showFailureDetails = resp.formValues[1];
+            prefs.noUseFormatCodes   = !(resp.formValues[0] as boolean);
+            prefs.showFailureDetails = resp.formValues[1] as boolean;
             player.setPreferences(PlayerPrefs, prefs);
         }
     }

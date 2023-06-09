@@ -3,7 +3,7 @@ import { declareNamespace } from "cicada-lib/preferences.js";
 import { system } from "cicada-lib/system.js";
 import { WatchdogTerminateReason } from "cicada-lib/watchdog.js";
 import { world } from "cicada-lib/world.js";
-import { ItemStack } from "cicada-lib/item-stack.js";
+import { ItemStack } from "cicada-lib/item/stack.js";
 import { Player  } from "cicada-lib/player.js";
 import { sessionManager } from "./player-session.js";
 import { ProbingThread } from "./probing-thread.js";
@@ -11,7 +11,7 @@ import { PlayerPrefsUI } from "./player-prefs-ui.js";
 
 declareNamespace("capprobe");
 
-system.events.beforeWatchdogTerminate.subscribe(ev => {
+system.beforeEvents.watchdogTerminate.subscribe(ev => {
     switch (ev.terminateReason) {
         case WatchdogTerminateReason.stackOverflow:
             /* There is a probe that can knowingly cause a stack
@@ -21,7 +21,7 @@ system.events.beforeWatchdogTerminate.subscribe(ev => {
     }
 });
 
-world.events.playerSpawn.subscribe(ev => {
+world.afterEvents.playerSpawn.subscribe(ev => {
     const player = ev.player;
     sessionManager.create(player.id);
 
@@ -36,11 +36,11 @@ world.events.playerSpawn.subscribe(ev => {
     }
 });
 
-world.events.playerLeave.subscribe(ev => {
+world.afterEvents.playerLeave.subscribe(ev => {
     sessionManager.destroy(ev.playerId);
 });
 
-world.events.itemUse.subscribe(async ev => {
+world.afterEvents.itemUse.subscribe(async ev => {
     if (ev.source instanceof Player &&
         ev.itemStack.typeId === "capprobe:wand_of_probing") {
 

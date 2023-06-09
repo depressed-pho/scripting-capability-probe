@@ -15,7 +15,7 @@ module.exports = {
         icon: "capability-probe.png",
 
         // Required
-        min_engine_version: "1.19.70"
+        min_engine_version: "1.20.0"
     },
     // Packs to generate (required).
     packs: [
@@ -47,8 +47,8 @@ module.exports = {
 
             // Optional
             dependencies: {
-                "@minecraft/server": "1.2.0-beta",
-                "@minecraft/server-ui": "1.0.0-beta"
+                "@minecraft/server": "1.3.0-beta",
+                "@minecraft/server-ui": "1.1.0-beta"
             },
 
             // Optional
