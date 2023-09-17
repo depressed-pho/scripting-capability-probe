@@ -13,7 +13,7 @@ declareNamespace("capprobe");
 
 system.beforeEvents.watchdogTerminate.subscribe(ev => {
     switch (ev.terminateReason) {
-        case WatchdogTerminateReason.stackOverflow:
+        case WatchdogTerminateReason.StackOverflow:
             /* There is a probe that can knowingly cause a stack
              * overflow. Do not terminate the server on that. */
             ev.cancel();
