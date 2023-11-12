@@ -1,5 +1,9 @@
 # Release notes
 
+## 1.0.4 -- 2023-11-12
+
+* Updated for Minecraft Bedrock 1.20.41.
+
 ## 1.0.3 -- 2023-09-17
 
 * Updated for Minecraft Bedrock 1.20.15.

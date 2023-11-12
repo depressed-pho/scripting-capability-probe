@@ -1,5 +1,4 @@
 import "cicada-lib/shims/console.js";
-import { declareNamespace } from "cicada-lib/preferences.js";
 import { system } from "cicada-lib/system.js";
 import { WatchdogTerminateReason } from "cicada-lib/watchdog.js";
 import { world } from "cicada-lib/world.js";
@@ -8,8 +7,6 @@ import { Player  } from "cicada-lib/player.js";
 import { sessionManager } from "./player-session.js";
 import { ProbingThread } from "./probing-thread.js";
 import { PlayerPrefsUI } from "./player-prefs-ui.js";
-
-declareNamespace("capprobe");
 
 system.beforeEvents.watchdogTerminate.subscribe(ev => {
     switch (ev.terminateReason) {
